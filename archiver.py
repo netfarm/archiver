@@ -29,7 +29,7 @@ __all__ = [ 'BackendBase',
             'E_TRACE' ]
 
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
-from signal import signal,SIGTERM,SIGINT,SIGHUP, SIG_IGN
+from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
 from time import strftime, time, mktime, localtime, sleep
 from sys import argv, exit, exc_info, stdin, stdout, stderr
 from os import fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
@@ -267,7 +267,6 @@ def StageHandler(config, stage_type):
             ### Hooks
             self._handle_accept = self.handle_accept
             self.handle_accept = self.accept_hook
-
             self.type = stage_type
 
             try:
@@ -284,6 +283,11 @@ def StageHandler(config, stage_type):
             except:
                 self.nowait = 0
 
+            try:
+                self.timeout = config.getint('global', 'timeout')
+            except:
+                self.timeout = None
+            
             ### Hashdb to avoid re-archiving
             try:
                 self.hashdb = opendb(config.get(self.type, 'hashdb'), 'c')
@@ -330,14 +334,17 @@ def StageHandler(config, stage_type):
         def run(self):
             self.setName(self.type)
             LOG(E_INFO, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
-            while isRunning:
-                self.loop(self.granularity, self.usepoll, self.map)               
+            self.loop(self.granularity, self.usepoll, self.map)
 
         ### Hooks to gracefully stop threads
         def accept_hook(self):
             LOG(E_TRACE, '%s: I got a connection: Acquiring lock' % self.type)
             self.lock.acquire()
             return self._handle_accept()
+
+        def del_hook(self):
+            LOG(E_TRACE, '%s: Connection closed: Releasing lock' % self.type)
+            self.lock.release()
 
         def finish(self, force=0):
             if not self.nowait and not force:
@@ -812,7 +819,7 @@ if __name__ == '__main__':
         granularity = GRANULARITY
 
     while isRunning:
-        ### Wait for child threads
         multiplex(serverPoll, 'join', granularity)
+
     ### Shutdown
     do_shutdown(0)

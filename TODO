@@ -23,33 +23,33 @@ TODO 2.x:
          clamav sends mails with multiple cc
          http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=213509&mbox=yes
 - [done need tests] Use lmtp or smtp for listening services (integrates with amavisd-new)
-- [done need backend support] Fix multiple from stuff
-- [almost done] rework configurations system - use ConfigParses instead of import?
-- [xmlrpc backend with python-xmlrpc is almost done] Implement backends (fixme: set timeout - config?)
+- [done] Multiple from support
+- [done] rework configurations system - use ConfigParses
+- [done] Implement backends (fixme: set timeout - config?)
 - [done] Make a class object for logger
 - [done] Move common backend exceptions class in archiver.py and import
 - [done] sql tables are in dir sql/ - postfix confs are in dir postfix/
 - [done] Add error handling and auto-reconnection to backend rdbms
-- [done] Add 'Archived as' as 200 result code??
+- [done] Add 'Archived as' as 200 result code
 - [done] lmtp.py LMTP_PORT not defined
-- [done need test] inter thread locking stuff, move the lock in LMTP/SMTPChannel??
-- [done config has usepoll and granularity] use_poll in config
+- [done] use_poll and granularity in config
 - [done] Added nowait to global for debugging locks
-- [done using an hash] failed to connect output server -> mail is archived pid is lost
-- [done need test] address check is not 100% correct
+- [done] hash to avoid duplicate process (e.g. failed to connect output server)
+- [done] address check should be now rfc compliant
 - [done] make separate hashdb for each backend
 - [done] add support for @mail.coral.com.cu:giovanni.sumberaz@sisam.it
-- [done] unix sockets should be 777??? -> 0777
+- [done] unix sockets permissions are 0777
 - [done] fix rfc821 syntax (a@host, b: etc + <+Mailbox>)
 - [done] removed all variables named "type" to avoid shadow of type()
 - [done] code/log cleanup, checked with pychecker, lmtp has some harmless warning
 - [done] use cvs for dev / I was not in src group / added ssh key
-- [done - need checks on opened fd] Make daemon - switch user? - getopt cmdline args - need checks on opened fd
+- [done] Make daemon - switch user - getopt cmdline args
 - [done] why shutdown is so slow? default granularity is 10, it should be ok
-- [done] null return path mails should be in whitelist? - what returns rfc822.parseaddr?
+- [done] null return path mails are in whitelist
 - [done] add a E_TRACE with connections
 - [done] fix loglevel/debuglevel in lmtp.py
 - [done] remove the archiver id header of whitelist mails or storage backend will process it
+- [done] Fix thread locking stuff - hooked accept and channel _del_ method
 - [checked] sendmail method need extensive checks
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - test LMTP/SMTPServer classes
@@ -57,6 +57,5 @@ TODO 2.x:
 - Make templates for mails - needed ?
 - Make README.txt
 - Storage sql table needs to be rewritten (indexes, unique, etc)
-- fix lock/unlock uffa
-- add timeout to connections (using sigalarm? this can break threads?)
+- add timeout to connections (using sigalarm? this can break threads?) - not so trivial
 - make debian package

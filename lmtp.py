@@ -201,12 +201,11 @@ class LMTP(SMTP):
 class LMTPChannel(async_chat):
     COMMAND = 0
     DATA = 1
-    def __init__(self, server, conn, addr, map=None, lock=None):
+    def __init__(self, server, conn, addr, map=None):
         self.ac_in_buffer = ''
         self.ac_out_buffer = ''
         self.producer_fifo = fifo()
         self.map = map
-        self.lock = lock
         dispatcher.__init__ (self, conn, self.map)
         self.__server = server
         self.__conn = conn
@@ -223,7 +222,7 @@ class LMTPChannel(async_chat):
         self.push('220 %s %s' % (self.__fqdn, server.banner))
         self.set_terminator('\r\n')
         self.__getaddr = getaddr
-
+            
     # Overrides base class for convenience
     def push(self, msg):
         async_chat.push(self, msg + '\r\n')
@@ -283,11 +282,7 @@ class LMTPChannel(async_chat):
     def close(self):
         self.del_channel(self.map)
         self.socket.close()
-        try:
-            self.lock.release()
-            if DEBUG: print 'Lock released'
-        except: pass
-        
+                
     # LMTP commands
     def lmtp_LHLO(self, arg):
         if not arg:
@@ -366,9 +361,8 @@ class LMTPChannel(async_chat):
         self.push('354 End data with <CR><LF>.<CR><LF>')
 
 class LMTPServer(dispatcher):
-    def __init__(self, localaddr, lock=None):
+    def __init__(self, localaddr):
         self.debuglevel = 0
-        self.lock = lock
         self.loop = loop
         self.banner = __version__
         if localaddr.find(':')==-1:
@@ -400,7 +394,13 @@ class LMTPServer(dispatcher):
             self.create_socket(AF_INET, SOCK_STREAM)
             self.set_reuse_addr()
             self.bind((proto, params))
-            
+
+        ### Not working ;(
+        #from socket import SOL_SOCKET, SO_RCVTIMEO, SO_SNDTIMEO
+        #from struct import pack
+        #self.socket.setsockopt (SOL_SOCKET, SO_RCVTIMEO, pack("ll",5,0))
+        #self.socket.setsockopt (SOL_SOCKET, SO_SNDTIMEO, pack("ll",5,0))
+                               
         self.localaddr = (proto, params)
         self.addr = (proto, params)
         self.map = { self.socket.fileno(): self }
@@ -426,8 +426,9 @@ class LMTPServer(dispatcher):
     ### gracefully shutdown if some signal has interrupted self.accept()
         try:
             conn, addr = self.accept()
-            channel = LMTPChannel(self, conn, addr, self.map, self.lock)
+            channel = LMTPChannel(self, conn, addr, self.map)
             channel.debuglevel = self.debuglevel
+            channel.__del__ = self.del_hook
         except: pass
                     
     # API for "doing something useful with the message"
@@ -461,13 +462,12 @@ class LMTPServer(dispatcher):
 class SMTPChannel(smtpd_SMTPChannel):
     COMMAND = 0
     DATA = 1
-    def __init__(self, server, conn, addr, map=None, lock=None):
+    def __init__(self, server, conn, addr, map=None):
         self.debuglevel = 0
         self.ac_in_buffer = ''
         self.ac_out_buffer = ''
         self.producer_fifo = fifo()
         self.map = map
-        self.lock = lock
         dispatcher.__init__ (self, conn, self.map)
         self.__server = server
         self.__conn = conn
@@ -513,19 +513,15 @@ class SMTPChannel(smtpd_SMTPChannel):
     def close(self):
         self.del_channel(self.map)
         self.socket.close()
-        if self.lock:
-            try:
-                self.lock.release()
-                if self.debuglevel > 0: print 'Lock released'
-            except: pass
-        
+                
 class SMTPServer(LMTPServer):
     def handle_accept(self):
         ### gracefully shutdown if some signal has interrupted self.accept()
         try:
             conn, addr = self.accept()
-            channel = SMTPChannel(self, conn, addr, self.map, self.lock)
+            channel = SMTPChannel(self, conn, addr, self.map)
             channel.debuglevel = self.debuglevel
+            channel.__del__ = self.del_hook
         except: pass
 
 class DebuggingServer(LMTPServer):
