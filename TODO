@@ -1,7 +1,7 @@
 BUGS
 - not 7bit header mail are trashed (it should be ok since, they aren't rfc compliant)
 - bcc mails (no recipients) are trashed - possible fix: postfix 2 can add:
-  Delivered-To: header with envelope address
+  Delivered-To: header with envelope address, but this will slow down the mail system
 - unix sockets and asyncore are not friends, you should use only tcp sockets
 - thread interlock stuff sometime doesn't work, i.e. if lock check is enabled
   archiver will not shutdown in a clean way
@@ -27,43 +27,46 @@ TODO 2.x:
          http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=213509&mbox=yes
 - [done unix socket/asyncore is buggy] Use lmtp or smtp for listening services (integrates with amavisd-new)
 - [done] Multiple from support
-- [done] rework configurations system - use ConfigParses
+- [done] Rework configurations system - use ConfigParses
 - [done] Implement backends (fixme: set timeout - config?)
 - [done] Make a class object for logger
 - [done] Move common backend exceptions class in archiver.py and import
-- [done] sql tables are in dir sql/ - postfix confs are in dir postfix/
+- [done] SQL tables are in dir sql/ - postfix confs are in dir postfix/
 - [done] Add error handling and auto-reconnection to backend rdbms
 - [done] Add 'Archived as' as 200 result code
 - [done] lmtp.py LMTP_PORT not defined
 - [done] use_poll and granularity in config
 - [done] Added nowait to global for debugging locks
-- [done] hash to avoid duplicate process (e.g. failed to connect output server)
-- [done] address check should be now rfc compliant
-- [done] make separate hashdb for each backend
-- [done] add support for @mail.domain1.com:email@domain2.com
-- [done] unix sockets permissions are 0777
-- [done] fix rfc821 syntax (a@host, b: etc + <+Mailbox>)
-- [done] removed all variables named "type" to avoid shadow of type()
-- [done] code/log cleanup, checked with pychecker, lmtp has some harmless warning
-- [done] use cvs for dev / I was not in src group / added ssh key
+- [done] Hash to avoid duplicate process (e.g. failed to connect output server)
+- [done] Address check should be now rfc compliant
+- [done] Make separate hashdb for each backend
+- [done] Add support for @mail.domain1.com:email@domain2.com
+- [done] Unix sockets permissions are 0777
+- [done] Fix rfc821 syntax (a@host, b: etc + <+Mailbox>)
+- [done] Remove all variables named "type" to avoid shadow of type()
+- [done] Code/log cleanup, checked with pychecker, lmtp has some harmless warning
 - [done] Make daemon - switch user - getopt cmdline args
-- [done] why shutdown is so slow? default granularity is 10, it should be ok
-- [done] null return path mails are in whitelist
-- [done] add a E_TRACE with connections
-- [done] fix loglevel/debuglevel in lmtp.py
-- [done] remove the archiver id header of whitelist mails or storage backend will process it
+- [done] Why shutdown is so slow? default granularity is 10, it should be ok
+- [done] Null return path mails should be in whitelist
+- [done] Add an E_TRACE with connections
+- [done] Fix loglevel/debuglevel in lmtp.py
+- [done] Remove the archiver id header of whitelist mails or storage backend will process it
 - [done sometime buggy] Fix thread locking stuff - hooked accept and channel _del_ method
-- [done] add a prefix to logs
+- [done] Add a prefix to logs
 - [done] Doxygen-ize: all methods are documented, still needed additional docs
 - [checked] sendmail method need extensive checks
-- Modify init script to take params from /etc/defaults also permission checks for logfile etc
-- make debian package
-- Make README.txt
-- add timeout to connections (using sigalarm? this can break threads?) - not so trivial
-- check lmtp socket
-- unmimify attachment filenames
+- [done] Win32 port with ntservice support
 - [partially done - null chars are stripped] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
-- unmimify email addresses??
-- add info about unix socket + asyncore problem
-- update postfix templates
-- check -> sendmail: Some of recipients rejected / mail is expunged from hashdb, correct??
+
+- Modify init script to take params from /etc/defaults also permission checks for logfile etc
+- Make debian package
+- Make README.txt
+- Add timeout to connections (using sigalarm? this can break threads?) - not so trivial
+- Unmimify attachment filenames?
+- Unmimify email addresses?
+- Add an info about unix socket + asyncore problem
+- Update postfix templates
+- Check -> sendmail: Some of recipients rejected / mail is expunged from hashdb, correct?
+- Update structure.txt: stage to stage passthrough - maybe usefull on win32 
+- Add to readme docs about possible problems with bugged rfc822 python2.1 module
+- Consider to converting doc to epydoc, it's better than doxygen with python since it's native

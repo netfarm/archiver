@@ -19,6 +19,10 @@
 ## @file archiver_svc.py
 ## Netfarm Mail Archiver [NtService]
 
+__doc__ = '''Netfarm Archiver - release 2.0.0 - Nt Service'''
+__version__ = '2.0.0'
+__all__ = [ 'NetfarmArchiverService' ]
+
 from win32serviceutil import ServiceFramework, HandleCommandLine
 from win32service import SERVICE_STOP_PENDING
 from servicemanager import LogMsg, LogErrorMsg

@@ -29,12 +29,15 @@ Netfarm Mail Archiver - Structure for version 2.0
 Implemented backends:
 
 Archive Backends:
-  - xmlrpc
-  - direct rdbms
-  - swish-e Berkeley DB pid-generator
+  - xmlrpc (unix, win32)
+  - direct rdbms (unix, win32) - backends: postgresql using psycopg
+  - swish-e Berkeley DB pid-generator (unix only)
 
 Storage Backends:
-  - xmlrpc
-  - direct rdbms
-  - filesystem
-  - swish-e filesystem + spool for swish-e processing
+  - xmlrpc (unix, win32)
+  - direct rdbms (unix, win32) - backends: postgresql using psycopg
+  - filesystem (unix, win32)
+  - swish-e filesystem + spool for swish-e processing (unix only)
+
+
+TODO: stage to stage passthrough - maybe usefull on win32
