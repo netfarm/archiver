@@ -366,10 +366,14 @@ def StageHandler(config, stage_type):
             except:
                 t, val, tb = exc_info()
                 del tb
-                LOG(E_ERR, '%s-sendmail: Failed to connect to output server: %s' (self.type, str(val)))
+                LOG(E_ERR, '%s-sendmail: Failed to connect to output server: %s' % (self.type, str(val)))
                 return self.do_exit(443, 'Failed to connect to output server')
 
-            server_reply = {}
+            ### Null path - smtplib doesn't enclosed '' in brackets
+            if m_from == '':
+                m_from = '<>'
+
+            server_reply = {}                    
 
             ### Here python developers was very funny, if a mail is not delivered to one of recipients
             ### then I have bad recipient list in the return value

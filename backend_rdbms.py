@@ -70,12 +70,13 @@ from time import ctime
 from base64 import encodestring
 
 def sql_quote(v):
-    # quote dictionary
-    quote_dict = {"\'": "''", "\\": "\\\\"}
-    for dkey in quote_dict.keys():
-        if v.find(dkey) != -1:
-            quote_dict[dkey].join(v.split(dkey))
-    return v
+    quote_list = [ '\'', '"', '\\' ]
+    res = ''
+    for i in range(len(v)):
+        if v[i] in quote_list:
+            res = res + '\\'
+        res = res + v[i]
+    return res
 
 def format_msg(msg):
     msg = str(msg)
@@ -187,6 +188,7 @@ class Backend(BackendBase):
                 del tb
                 msg = format_msg(val)
                 self.LOG(E_ERR, 'Rdbms Backend: Cannot execute query: ' + msg)
+                self.LOG(E_TRACE, 'Rdbms Backend: query was: ' + qs)
                 return 0, 443, '%s: Internal Server Error' % t
 
     def process_archive(self, data):

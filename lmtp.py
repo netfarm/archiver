@@ -43,7 +43,7 @@ __version__ = 'Python LMTP Server version 0.1'
 NEWLINE = '\n'
 QUOTE='\\'
 EMPTYSTRING = ''
-SPECIAL='<>()[]," \''
+SPECIAL='<>()[]," '
 LMTP_PORT=2003
 DEBUG=1
 
@@ -117,7 +117,11 @@ def getaddr(keyword, arg):
 
     if address.count('@')>1:
         return None, 'Too many @'
-    
+
+    ### Workaround to 'email@example.com'
+    if address[0]=='\'' and address[-1]=='\'':
+        address = address[1:-1]
+
     res = address.split('@', 1)
     address = validate(res[0])
 

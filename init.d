@@ -29,7 +29,7 @@ case "$1" in
 	echo "$NAME."
 	;;
   restart|force-reload)
-	$0 stop && $0 start
+	$0 stop && sleep 5 && $0 start
 	;;
   *)
 	N=/etc/init.d/$NAME
