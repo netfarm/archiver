@@ -6,16 +6,6 @@ BUGS
 - thread interlock stuff sometime doesn't work, i.e. if lock check is enabled
   archiver will not shutdown in a clean way
 
-TODO 1.x:
-- Modularize and make backend/frontend
-- Rewrite of do_exit and/or implement lmtp protocol, so I can bounce back mails
-- Find a better solution for non-7bit headers mails (but not rfc compliant)?
-- Check report_admin mail with attachments
-- Add command line opts to log on stderr
-- Check rfc822 parsing (exp error handling)
-- INI file instead of python import? This can make archiver handle reload
-- Performance optimizations, and remove some uneeded log
-
 TODO 2.x:
 - [done] Split out history and readme from archver.py and make different files 
 - [done] Split the server to two threads 1st and 2nd stage using different unix sockets
@@ -58,7 +48,7 @@ TODO 2.x:
 - [done] Win32 port with ntservice support
 - [done] py2exe wrapper
 - [done] nsis installer for win32
-- [partially done - null chars are stripped] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
+- [partially done] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package
@@ -72,4 +62,4 @@ TODO 2.x:
 - Update structure.txt: stage to stage passthrough - maybe usefull on win32 
 - Add to readme docs about possible problems with bugged rfc822 python2.1 module
 - Consider to converting doc to epydoc, it's better than doxygen with python since it's native
-- Check set_isolation on pyscopg, it doesn't exists on some versions
+- Convert some fields in lowercase before archiving?

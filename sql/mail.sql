@@ -15,8 +15,6 @@ CREATE TABLE "mail_pid" (
 	"year" smallint
 );
 
-INSERT INTO mail_pid values(0, 2004);
-
 CREATE INDEX index_pidb ON mail USING btree ("year", pid);
 CREATE INDEX index_pidh ON mail USING hash (pid);
 CREATE INDEX index_from_loginb ON mail USING btree (from_login);

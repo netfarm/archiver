@@ -1,7 +1,7 @@
 ; Netfarm Mail Archiver - release 2
 ;
-; Copyright (C) 2004 Gianluigi Tiesi <sherpya@netfarm.it>
-; Copyright (C) 2004 NetFarm S.r.l.  [http://www.netfarm.it]
+; Copyright (C) 2005 Gianluigi Tiesi <sherpya@netfarm.it>
+; Copyright (C) 2005 NetFarm S.r.l.  [http://www.netfarm.it]
 ;
 ; This program is free software; you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by the
@@ -75,7 +75,7 @@ VIProductVersion "2.0.0.0"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "Netfarm Mail Archiver"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "Comments" "Netfarm Mail Archiver"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "CompanyName" "Netfarm"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "© 2004 Gianluigi Tiesi"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "© 2005 Gianluigi Tiesi"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "Netfarm Mail Archiver"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "2.0.0"
 
@@ -108,7 +108,7 @@ Section
   
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 
-  ; TODO check if nt/2k/xp/2k3
+  ; TODO check if installed on nt/2k/xp/2k3
   ExecWait '"$INSTDIR\archiver_svc.exe" -remove'
   ExecWait '"$INSTDIR\archiver_svc.exe" -install'
   

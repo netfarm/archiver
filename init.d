@@ -2,8 +2,6 @@
 #
 #		Written by Gianluigi Tiesi <sherpya@netfarm.it>
 #
-# Version:	@(#)skeleton  1.8  03-Mar-1998  miquels@cistron.nl
-#
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/lib/archiver/archiver.py

@@ -3,8 +3,8 @@
 #
 # Netfarm Mail Archiver - release 2
 #
-# Copyright (C) 2004 Gianluigi Tiesi <sherpya@netfarm.it>
-# Copyright (C) 2004 NetFarm S.r.l.  [http://www.netfarm.it]
+# Copyright (C) 2005 Gianluigi Tiesi <sherpya@netfarm.it>
+# Copyright (C) 2005 NetFarm S.r.l.  [http://www.netfarm.it]
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
@@ -25,46 +25,62 @@ __all__ = [ 'Backend' ]
 
 driver_map = { 'psql': 'psycopg' }
 
-qs_map = { 'archive':
-		   ['''INSERT INTO mail
-		   (year,
-		   pid,
-		   from_login,
-		   from_domain,
-		   to_login,
-		   to_domain,
-		   subject,
-		   mail_date,
-		   attachment)
-		   VALUES
-		   (int4(EXTRACT (YEAR FROM NOW())),
-		   (SELECT max(pid) + 1 FROM mail_pid),
-		   '%(from_login)s',
-		   '%(from_domain)s',
-		   '%(to_login)s',
-		   '%(to_domain)s',
-		   '%(subject)s',
-		   '%(date)s',
-		   '%(attachments)d');
-		   ''',
-			'''UPDATE mail_pid
-			SET pid  = (pid+1) * (1 - (int2(EXTRACT (YEAR FROM NOW())) - year)),
-			year = int2(EXTRACT (YEAR FROM NOW()));
-			SELECT max(pid) as pid,
-			max(year) as pid_year
-			FROM mail_pid;'''],
-
-		   
-		   'storage':
-		   ['''INSERT INTO mail_storage
-           (year,
-           pid,
-           mail)
-           VALUES
-           ('%(year)d',
-           '%(pid)d',
-           '%(mail)s');''', '']
-		   }
+qs_map = {
+    'archive':
+    [ '''UPDATE mail_pid
+         SET pid  = (pid+1)
+         WHERE year=int4(EXTRACT (YEAR FROM NOW()));
+         (
+         SELECT pid,
+         year as pid_year
+         FROM mail_pid
+         WHERE year=int4(EXTRACT (YEAR FROM NOW()))
+         )
+         UNION
+         (
+         SELECT -1 as pid,
+         int4(EXTRACT (YEAR FROM NOW()))
+         )
+         ORDER BY pid DESC
+         LIMIT 1;''',
+      '''INSERT INTO mail_pid
+         (year, pid)
+         VALUES
+         (int4(EXTRACT (YEAR FROM NOW())), 1);
+         SELECT 	pid,
+         year as pid_year
+         FROM mail_pid
+         WHERE year=int4(EXTRACT (YEAR FROM NOW()));''',
+      '''INSERT INTO mail
+         (year,
+         pid,
+         from_login,
+         from_domain,
+         to_login,
+         to_domain,
+         subject,
+         mail_date,
+         attachment)
+         VALUES
+         (int4(EXTRACT (YEAR FROM NOW())),
+         (SELECT max(pid) FROM mail_pid WHERE year=int4(EXTRACT (YEAR FROM NOW()))),
+         '%(from_login)s',
+         '%(from_domain)s',
+         '%(to_login)s',
+         '%(to_domain)s',
+         '%(subject)s',
+         '%(date)s',
+         '%(attachments)d');'''],
+    'storage':
+    [ '''INSERT INTO mail_storage
+         (year,
+         pid,
+         mail)
+         VALUES
+         ('%(year)d',
+         '%(pid)d',
+         '%(mail)s');''', '']
+    }
 
 from archiver import *
 from sys import exc_info
@@ -184,13 +200,10 @@ class Backend(BackendBase):
             raise ConnectionError, msg
             
         try:
-            self.connection.autocommit(1)
-            #self.connection.set_isolation_level(0)
-        except:
-            self.LOG(E_TRACE, 'Rdbms Backend: driver has not isolation_level facility')
+            self.connection.autocommit(0)
+        except: pass
         self.cursor = self.connection.cursor()
         self.LOG(E_TRACE, 'Rdbms Backend: I\'ve got a cursor from the driver')
-
 
     def do_query(self, qs, fetch=None):
         """execute a query
@@ -232,6 +245,12 @@ class Backend(BackendBase):
         @param data: is a dict containing all needed stuff
         @return: the result of do_query"""
         
+        year, pid, result = self.do_query(self.query[0], fetch=1)
+
+        ## There is no pid for current year, so we create a new entry in the table
+        if pid == -1:
+                year, pid, result = self.do_query(self.query[1], fetch=1)
+
         qs = ''
         nattach = len(data['m_attach'])
         subject = sql_quote(mime_decode_header(data['m_sub'])[:252])
@@ -259,11 +278,10 @@ class Backend(BackendBase):
                            'subject': subject,
                            'date': date,
                            'attachments': nattach }
-                qs = qs + (self.query[0] % values)
-
-        qs = qs + self.query[1]
-
-        return self.do_query(qs, fetch=1)
+                qs = qs + (self.query[2] % values)
+        self.do_query(qs)
+        self.connection.commit()
+        return year, pid, result
     
     def process_storage(self, data):
         """process storaging of mail on a rdbms
