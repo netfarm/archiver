@@ -8,5 +8,8 @@ compile:
 clean:
 	rm -f *~ *.pyc *.pyo *.flc $(DIST)
 
+pycheck:
+	pychecker *.py
+
 $(DIST): $(ALL) $(TEST)
 	tar czvf $(DIST) $(ALL) $(TEST)

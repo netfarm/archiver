@@ -47,7 +47,7 @@ class Backend(BackendBase):
                 
     ### Storage on filesystem
     def process(self, data):
-        month = localtime(data['date'])[1]
+        month = data['date'][1]
 
         ### First check integrity
         mailpath = path.join(self.storagedir, str(data['year']), str(month))

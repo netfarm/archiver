@@ -30,7 +30,7 @@ __all__ = [ 'BackendBase',
 
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
-from time import strftime, time, mktime, localtime, sleep
+from time import strftime, time, localtime, sleep
 from sys import argv, exc_info, stdin, stdout, stderr
 from sys import exit as sys_exit
 from os import fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
@@ -38,7 +38,7 @@ from os import close, dup, seteuid, setegid, getuid
 from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
-from rfc822 import parsedate,parseaddr
+from rfc822 import parseaddr
 from smtplib import SMTP
 from ConfigParser import ConfigParser
 from mimify import mime_decode
@@ -450,10 +450,8 @@ def StageHandler(config, stage_type):
             m_date = msg.getdate('Date')
             if m_date is None:
                 LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
-                m_date = mktime(localtime(time()))
-            else:
-                m_date = mktime(m_date)
-                
+                m_date = localtime(time())
+                        
             del msg,stream
 
             ### Mail needs to be processed
@@ -601,10 +599,8 @@ def StageHandler(config, stage_type):
             m_date = msg.getdate('Date')
             if m_date is None:
                 LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
-                m_date = mktime(localtime(time()))
-            else:
-                m_date = mktime(m_date)
-
+                m_date = localtime(time())
+            
             m_attach = []
 
             ### If multipart sould be attachment (but not always)

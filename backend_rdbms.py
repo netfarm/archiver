@@ -66,7 +66,7 @@ qs_map = { 'archive':
 
 from archiver import *
 from sys import exc_info
-from time import ctime
+from time import asctime
 from base64 import encodestring
 
 def sql_quote(v):
@@ -195,7 +195,7 @@ class Backend(BackendBase):
         qs = ''
         nattach = len(data['m_attach'])
         subject = sql_quote(mime_decode_header(data['m_sub'])[:252])
-        date = sql_quote(ctime(data['m_date']))
+        date = sql_quote(asctime(data['m_date']))
         for sender in data['m_from']:
             try:
                 slog, sdom = sender[1].split('@', 1)
@@ -210,14 +210,14 @@ class Backend(BackendBase):
                     self.LOG('Error in to/cc: ' + dest[1])
                     return 0, 443, 'Internal Server Error'
             
-                dict = { 'from_login': sql_quote(slog[:28]),
-                         'from_domain': sql_quote(sdom[:255]),
-                         'to_login': sql_quote(dlog[:28]),
-                         'to_domain': sql_quote(ddom[:255]),
-                         'subject': subject,
-                         'date': date,
-                         'attachments': nattach }
-                qs = qs + (self.query[0] % dict)
+                values = { 'from_login': sql_quote(slog[:28]),
+                           'from_domain': sql_quote(sdom[:255]),
+                           'to_login': sql_quote(dlog[:28]),
+                           'to_domain': sql_quote(ddom[:255]),
+                           'subject': subject,
+                           'date': date,
+                           'attachments': nattach }
+                qs = qs + (self.query[0] % values)
 
         qs = qs + self.query[1]
 
