@@ -1,5 +1,5 @@
 DIST=archiver.tar.gz
-ALL=*.py Makefile archiver.ini TODO ChangeLog structure.txt init.d sql postfix
+ALL=*.py Makefile archiver.ini TODO ChangeLog* structure.txt init.d sql postfix
 TEST=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
 all: $(DIST)
 
