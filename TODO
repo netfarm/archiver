@@ -50,12 +50,12 @@ TODO 2.x:
 - [done] fix loglevel/debuglevel in lmtp.py
 - [done] remove the archiver id header of whitelist mails or storage backend will process it
 - [done] Fix thread locking stuff - hooked accept and channel _del_ method
+- [done] add a prefix to logs
 - [checked] sendmail method need extensive checks
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - test LMTP/SMTPServer classes
-- add a prefix to logs
 - Make templates for mails - needed ?
 - Make README.txt
-- Storage sql table needs to be rewritten (indexes, unique, etc)
+- Storage sql table needs to be rewritten (indexes, unique, etc) -> guancio
 - add timeout to connections (using sigalarm? this can break threads?) - not so trivial
 - make debian package
