@@ -31,9 +31,10 @@ __all__ = [ 'BackendBase',
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
 from time import strftime, time, mktime, localtime, sleep
-from sys import argv, exit, exc_info, stdin, stdout, stderr
+from sys import argv, exc_info, stdin, stdout, stderr
+from sys import exit as sys_exit
 from os import fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
-from os import close, dup, seteuid, setegid
+from os import close, dup, seteuid, setegid, getuid
 from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
@@ -45,7 +46,7 @@ from base64 import decodestring
 from threading import Thread, RLock
 from cStringIO import StringIO
 from getopt import getopt
-from pwd import getpwnam
+from pwd import getpwnam, getpwuid
 import re
 
 ### Debug levels
@@ -263,11 +264,11 @@ def StageHandler(config, stage_type):
             ### Init LMTPServer Class
             Class.__init__(self, self.address)
             self.lock = RLock()
+            self.type = stage_type
             
             ### Hooks
             self._handle_accept = self.handle_accept
             self.handle_accept = self.accept_hook
-            self.type = stage_type
 
             try:
                 self.usepoll = config.getint('global', 'usepoll')
@@ -385,7 +386,7 @@ def StageHandler(config, stage_type):
                 server.close()
             except: pass
 
-            ### We can get None, a dict or an integer
+            ### We can get a dict or an integer
             if type(server_reply) == type(0):
                 server_reply = str(server_reply)
                 
@@ -676,7 +677,7 @@ def do_shutdown(res=0):
     multiplex(serverPoll, 'close')
     LOG(E_ERR, '[Main] Shutdown complete')
     LOG.close()
-    exit(res)
+    sys_exit(res)
 
 ### Main       
 if __name__ == '__main__':
@@ -686,7 +687,7 @@ if __name__ == '__main__':
             raise Exception
     except:
         print 'Usage [%s] [-d] [-c alternate_config] [-u user]'
-        exit(-1)
+        sys_exit(-1)
 
     configfile='/etc/archiver.conf'
     debug=None
@@ -712,11 +713,13 @@ if __name__ == '__main__':
             t, val, tb = exc_info()
             del t
             print 'Cannot swith to user', user, str(val)
-            exit(-2)
+            sys_exit(-2)
+    else:
+        user = getpwuid(getuid())[0]
 
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
-        exit(-3)
+        sys_exit(-3)
 
     config = ConfigParser()
     config.read(configfile)
@@ -737,9 +740,8 @@ if __name__ == '__main__':
             LOG(E_ERR, '[Main] Stale Lockfile: Process is alive')
         except:
             LOG(E_ERR, '[Main] Stale Lockfile: Old process is not alive')
-            locked = 0
-            
-    except IOError:
+            locked = 0    
+    except:
         locked = 0
 
     if locked:
@@ -755,7 +757,7 @@ if __name__ == '__main__':
             del t                           
             print 'Cannot go in background mode', str(val)
 
-        if pid: exit(0)
+        if pid: sys_exit(0)
         
         null = open('/dev/null', 'r')
         close(stdin.fileno())
@@ -765,10 +767,11 @@ if __name__ == '__main__':
         dup(LOG.fileno())
         close(stderr.fileno())
         dup(LOG.fileno())
-    
+
     ### Save my process id to file
+    mypid = str(getpid())
     try:
-        open(pidfile,'w').write(str(getpid()))
+        open(pidfile,'w').write(mypid)
     except:
         LOG(E_ERR, '[Main] Pidfile is not writable')
         do_shutdown(-6)
@@ -788,9 +791,7 @@ if __name__ == '__main__':
         pass
 
     ### Starting up
-
-    if user:
-        LOG(E_INFO, '[Main] Running as user %s pid %s' % (user, getpid()))
+    LOG(E_INFO, '[Main] Running as user %s pid %s' % (user, mypid))
     
     ### Creating stage sockets
     ### Archive stage

@@ -32,7 +32,7 @@ from socket import gethostbyaddr, gethostbyname, gethostname
 from socket import socket, AF_UNIX, AF_INET, SOCK_STREAM
 from smtplib import SMTP, SMTPConnectError, SMTPServerDisconnected
 from smtpd import SMTPChannel as smtpd_SMTPChannel
-from sys import argv,exit
+from sys import argv
 from time import time, ctime
 from os import unlink, chmod
 import re
@@ -365,6 +365,7 @@ class LMTPServer(dispatcher):
         self.debuglevel = 0
         self.loop = loop
         self.banner = __version__
+        self.del_hook = None
         if localaddr.find(':')==-1:
             raise UnknownProtocol, localaddr
 
@@ -428,7 +429,7 @@ class LMTPServer(dispatcher):
             conn, addr = self.accept()
             channel = LMTPChannel(self, conn, addr, self.map)
             channel.debuglevel = self.debuglevel
-            channel.__del__ = self.del_hook
+            if self.del_hook: channel.__del__ = self.del_hook
         except: pass
                     
     # API for "doing something useful with the message"
@@ -521,7 +522,7 @@ class SMTPServer(LMTPServer):
             conn, addr = self.accept()
             channel = SMTPChannel(self, conn, addr, self.map)
             channel.debuglevel = self.debuglevel
-            channel.__del__ = self.del_hook
+            if self.del_hook: channel.__del__ = self.del_hook
         except: pass
 
 class DebuggingServer(LMTPServer):
