@@ -17,7 +17,7 @@ pycheck:
 
 doxygen:
 	@echo doxygen-ing...
-	@doxygen doxygen.cfg 2>&1 | grep -v "param is not found in the argument list"
+	@doxygen 2>&1 | grep -v "param is not found in the argument list"
 
 doxy:
 	make doxygen >doxy.log && less doxy.log
