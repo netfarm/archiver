@@ -159,17 +159,16 @@ class Backend(BackendBase):
    
     def close(self):
         """closes the cursor and the connection"""      
-        if self.cursor is not None:
-            try:
-                self.cursor.close()
-            except: pass
+        try:
+            self.cursor.close()
             del self.cursor
-        if self.connection is not None:
-            try:
-                self.connection.close()
-            except: pass
+        except: pass
+            
+        try:
+            self.connection.close()
             del self.connection
-
+        except: pass
+            
     def connect(self):
         """make a connection to rdbms
 

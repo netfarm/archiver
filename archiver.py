@@ -33,7 +33,9 @@ __all__ = [ 'BackendBase',
             'platform' ] # import once
 
 from sys import platform
-if platform != 'win32':
+if platform == 'win32':
+    from win32api import GetCurrentProcessId
+else:
     from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
     from os import fork, kill, seteuid, setegid, getuid
     from pwd import getpwnam, getpwuid
@@ -75,13 +77,14 @@ STARTOFBODY=NL+NL
 GRANULARITY=10
 BACKEND_OK = (1, 200, 'Ok')
 MINSIZE=8
+
+### Globals
+LOG = None
+config = None
 quotatbl = None
 isRunning = 0
+main_svc = 0
 serverPoll = []
-
-### Globals - TODO Fix global vars vs locals
-#LOG=None
-#config=None
 ##
 class DEBUGServer:
     """Debug Server used only for debugging connections"""
@@ -158,6 +161,7 @@ class Logger:
     Used to log message to a file"""
     def __init__(self, debug=None):
         """The constructor"""
+        global config
         if debug:
             self.log_fd = stdout
         else:
@@ -742,8 +746,7 @@ def multiplex(objs, function, *args):
     res = []
     for obj in objs:
         method = getattr(obj, function, None)
-        if method:
-            res.append(apply(method, args))
+        if method: res.append(apply(method, args))
     return res
 
 def sig_int_term(signum, frame):
@@ -763,23 +766,172 @@ def sig_int_term(signum, frame):
 
 def do_shutdown(res=0):
     """Archiver system shutdown"""
-    global quotatbl
+    global quotatbl, main_svc
+
     ## Close quota hash handler
     if quotatbl:
         quotatbl.close()
 
-    try:
-        unlink(config.get('global', 'pidfile'))
-    except: pass
+    if platform != 'win32':
+        try:
+            unlink(config.get('global', 'pidfile'))
+        except: pass
 
     LOG(E_ALWAYS, '[Main] Waiting for child threads')
     multiplex(serverPoll, 'close')
     LOG(E_ALWAYS, '[Main] Shutdown complete')
     LOG.close()
-    sys_exit(res)
+    if main_svc:
+        sys_exit(res)
+    else:
+        return res
 
-## Main       
-if __name__ == '__main__':
+## Specific Startup on unix
+def unix_startup(config, user=None):
+    global LOG        
+    if user:
+        try:
+            userpw = getpwnam(user)
+            setegid(userpw[3])
+            seteuid(userpw[2])
+        except:
+            t, val, tb = exc_info()
+            del t
+            print 'Cannot swith to user', user, str(val)
+            sys_exit(-2)
+    else:
+        user = getpwuid(getuid())[0]
+
+    try:
+        pidfile = config.get('global', 'pidfile')
+    except:
+        LOG(E_ALWAYS, '[Main] Missing pidfile in config')
+        do_shutdown(-4)
+        
+    locked = 1
+    try:        
+        pid = int(open(pidfile).read().strip())
+        LOG(E_TRACE, '[Main] Lock: Sending signal to the process')
+        try:
+            kill(pid,0)
+            LOG(E_ERR, '[Main] Stale Lockfile: Process is alive')
+        except:
+            LOG(E_ERR, '[Main] Stale Lockfile: Old process is not alive')
+            locked = 0    
+    except:
+        locked = 0
+
+    if locked:
+        LOG(E_ALWAYS, '[Main] Unable to start Netfarm Archiver, another instance is running')
+        do_shutdown(-5)
+
+    ## Daemonize - TODO win32 make it a service
+    if not debug:
+        try:
+            pid = fork()
+        except:
+            t, val, tb = exc_info()
+            del t                           
+            print 'Cannot go in background mode', str(val)
+
+        if pid: sys_exit(0)
+        
+        null = open('/dev/null', 'r')
+        close(stdin.fileno())
+        dup(null.fileno())
+        null.close()
+        close(stdout.fileno())
+        dup(LOG.fileno())
+        close(stderr.fileno())
+        dup(LOG.fileno())
+
+    ## Save my process id to file
+    mypid = str(getpid())
+    try:
+        open(pidfile,'w').write(mypid)
+    except:
+        LOG(E_ALWAYS, '[Main] Pidfile is not writable')
+        do_shutdown(-6)
+
+    return user, mypid
+
+## Specific Startup on win32
+def win32_startup(config, user=None):
+    return 'Windows User', GetCurrentProcessId()
+
+## Start the Archiver Service    
+def ServiceStartup(configfile, user=None, debug=None, service_main=0):
+    global LOG, config, isRunning, main_svc
+    main_svc = service_main
+    if not access(configfile, F_OK | R_OK):
+        print 'Cannot read configuration file', configfile
+        sys_exit(-3)
+
+    config = ConfigParser()
+    config.read(configfile)
+
+    LOG = Logger(debug=debug)
+    
+    if platform == 'win32':
+        user, mypid = win32_startup(config)
+    else:
+        user, mypid = unix_startup(config, user=user)
+
+    ## Quota table
+    try:
+        quotatbl = opendb(config.get('global', 'quotafile'), 'r')
+        LOG(E_TRACE, '[Main] Quotacheck is enabled')
+    except:
+        quotatbl = None
+
+    ## Whitelist
+    try:
+        whitelist = config.get('global','whitelist').split(',')
+        LOG(E_TRACE, '[Main] My whitelist is ' + ','.join(whitelist))
+    except:
+        pass
+
+    ## Starting up
+    LOG(E_INFO, '[Main] Running as user %s pid %s' % (user, mypid))
+    
+    ## Creating stage sockets
+    sections = config.sections()
+    if 'archive' in sections:
+        serverPoll.append(StageHandler(config, 'archive'))
+    if 'storage' in sections:
+        serverPoll.append(StageHandler(config, 'storage'))
+    
+    if len(serverPoll):
+        multiplex(serverPoll, 'start')       
+        isRunning = 1
+    else:
+        LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
+        return do_shutdown(-7)
+
+    try:
+        granularity = config.getint('global', 'granularity')
+    except:
+        granularity = GRANULARITY
+
+    ## Install Signal handlers
+    if platform != 'win32':
+        LOG(E_TRACE, '[Main] Installing signal handlers')
+        signal(SIGINT,  sig_int_term)
+        signal(SIGTERM, sig_int_term)
+        signal(SIGHUP,  SIG_IGN)
+
+    while isRunning:
+        try:
+            multiplex(serverPoll, 'join', granularity)
+        except:
+            ## Program Termination when sigint is not catched (mainly on win32)
+            sig_int_term(0, 0)
+
+    ## Shutdown
+    return do_shutdown(0)
+
+## Main
+if __name__ == '__main__':  
     if platform == 'win32':
         configfile = 'archiver.ini'
         arglist = 'dc:'
@@ -812,128 +964,4 @@ if __name__ == '__main__':
             user=arg[1]
             continue
 
-
-    if user:
-        try:
-            userpw = getpwnam(user)
-            setegid(userpw[3])
-            seteuid(userpw[2])
-        except:
-            t, val, tb = exc_info()
-            del t
-            print 'Cannot swith to user', user, str(val)
-            sys_exit(-2)
-    else:
-        if platform != 'win32': user = getpwuid(getuid())[0]
-
-    if not access(configfile, F_OK | R_OK):
-        print 'Cannot read configuration file', configfile
-        sys_exit(-3)
-
-    config = ConfigParser()
-    config.read(configfile)
-
-    LOG = Logger(debug=debug)
-    try:
-        pidfile = config.get('global', 'pidfile')
-    except:
-        LOG(E_ALWAYS, '[Main] Missing pidfile in config')
-        do_shutdown(-4)
-        
-    locked = 1
-    try:        
-        pid = int(open(pidfile).read().strip())
-        LOG(E_TRACE, '[Main] Lock: Sending signal to the process')
-        try:
-            kill(pid,0)
-            LOG(E_ERR, '[Main] Stale Lockfile: Process is alive')
-        except:
-            LOG(E_ERR, '[Main] Stale Lockfile: Old process is not alive')
-            locked = 0    
-    except:
-        locked = 0
-
-    if locked:
-        LOG(E_ALWAYS, '[Main] Unable to start Netfarm Archiver, another instance is running')
-        do_shutdown(-5)
-
-    ## Daemonize - TODO win32 make it a service
-    if platform != 'win32' and not debug:
-        try:
-            pid = fork()
-        except:
-            t, val, tb = exc_info()
-            del t                           
-            print 'Cannot go in background mode', str(val)
-
-        if pid: sys_exit(0)
-        
-        null = open('/dev/null', 'r')
-        close(stdin.fileno())
-        dup(null.fileno())
-        null.close()
-        close(stdout.fileno())
-        dup(LOG.fileno())
-        close(stderr.fileno())
-        dup(LOG.fileno())
-
-    ## Save my process id to file
-    mypid = str(getpid())
-    try:
-        open(pidfile,'w').write(mypid)
-    except:
-        LOG(E_ALWAYS, '[Main] Pidfile is not writable')
-        do_shutdown(-6)
-
-    ## Quota table
-    try:
-        quotatbl = opendb(config.get('global', 'quotafile'), 'r')
-        LOG(E_TRACE, '[Main] Quotacheck is enabled')
-    except:
-        quotatbl = None
-
-    ## Whitelist
-    try:
-        whitelist = config.get('global','whitelist').split(',')
-        LOG(E_TRACE, '[Main] My whitelist is ' + ','.join(whitelist))
-    except:
-        pass
-
-    ## Starting up
-    LOG(E_INFO, '[Main] Running as user %s pid %s' % (user, mypid))
-    
-    ## Creating stage sockets
-    sections = config.sections()
-    if 'archive' in sections:
-        serverPoll.append(StageHandler(config, 'archive'))
-    if 'storage' in sections:
-        serverPoll.append(StageHandler(config, 'storage'))
-    
-    if len(serverPoll):
-        multiplex(serverPoll, 'start')       
-        isRunning = 1
-    else:
-        LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
-        do_shutdown(-7)
-
-    ## Install Signal handlers
-    if platform != 'win32':
-        LOG(E_TRACE, '[Main] Installing signal handlers')
-        signal(SIGINT,  sig_int_term)
-        signal(SIGTERM, sig_int_term)
-        signal(SIGHUP,  SIG_IGN)
-
-    try:
-        granularity = config.getint('global', 'granularity')
-    except:
-        granularity = GRANULARITY
-
-    while isRunning:
-        try:
-            multiplex(serverPoll, 'join', granularity)
-        except KeyboardInterrupt:
-            ## Program Termination on win32
-            sig_int_term(0, 0)
-
-    ## Shutdown
-    do_shutdown(0)
+    ServiceStartup(configfile, user, debug, 1)
