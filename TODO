@@ -59,3 +59,4 @@ TODO 2.x:
 - Storage sql table needs to be rewritten (indexes, unique, etc)
 - fix lock/unlock uffa
 - add timeout to connections (using sigalarm? this can break threads?)
+- make debian package
