@@ -17,7 +17,7 @@
 # for more details.
 # ======================================================================
 ## @file archiver.py
-## @brief Netfarm Mail Archiver [core]
+## Netfarm Mail Archiver [core]
 
 __doc__ = '''Netfarm Archiver relase 2.0.0 - Main worker'''
 __version__ = '2.0.0'
@@ -79,18 +79,18 @@ serverPoll = []
 #config=None
 ##
 class DEBUGServer:
-    """@brief Debug Server used only for debugging connections"""
+    """Debug Server used only for debugging connections"""
     def __init__(self, address, port):
-        """@brief DEBUGServer Constructor"""
+        """DEBUGServer Constructor"""
         print 'DEBUGServer: output %s:%s' % (address, port)
 
     def sendmail(self, m_from, m_to, msg):
-        """@brief DEBUGServer fake sendmail"""
+        """DEBUGServer fake sendmail"""
         print 'DEBUGServer: sendmail from: %s to %s - size %d' % (m_from, m_to, len(msg))
         return ''  
         
     def close(self):
-        """@brief DEBUGServer dummy close"""
+        """DEBUGServer dummy close"""
         pass
     
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
@@ -100,50 +100,45 @@ input_classes  = { 'lmtp': LMTPServer, 'smtp': SMTPServer }
 output_classes = { 'lmtp': LMTP, 'smtp': SMTP, 'debug': DEBUGServer }
 
 class StorageTypeNotSupported(Exception):
-    """@exception StorageTypeNotSupported The storage type is not supported
-    @brief Exception: The storage type is not supported"""
+    """StorageTypeNotSupported The storage type is not supported"""
     pass
 
 class BadStageTypeError(Exception):
-    """@exception BadStageTypeError The Stage type is wrong
-    @brief Exception: The Stage type is wrong"""
+    """BadStageTypeError The Stage type is wrong"""
     pass
 
 class BadStageInput(Exception):
-    """@exception BadStageInput The Input Stage is wrong
-    @brief Exception: The Input Stage is wrong"""
+    """BadStageInput The Input Stage is wrong"""
     pass
 
 class BadStageOutput(Exception):
-    """@exception BadStageOutput The Output Stage is wrong
-    @brief Exception: The Output Stage is wrong"""
+    """BadStageOutput The Output Stage is wrong"""
     pass
 
 class BadBackendTypeError(Exception):
-    """@exception BadBackendTypeError An error occurred when importing Backend module
-    @brief Exception: An error occurred when importing Backend module"""
+    """BadBackendTypeError An error occurred when importing Backend module"""
     pass
 
 class BackendBase:
-    """@brief BackendBase Class
+    """BackendBase Class
 
         This class should be derived to make a specialized Backend class"""
     
     def process(self, data):
-        """@brief method to process data
+        """method to process data
 
         should be implemented when subclassing"""
         del data
         return 0, 433, 'Backend not configured'
         
     def shutdown(self):
-        """@brief method to shudown and cleanup the backend
+        """method to shudown and cleanup the backend
 
         should be implemented when subclassing"""
         pass
 
 class DebugBackend(BackendBase):
-    """@brief A fake Backend
+    """A fake Backend
 
     used only to debug the process"""
     def process(self, data):
@@ -153,7 +148,7 @@ class DebugBackend(BackendBase):
     def shutdown(self): pass
                  
 class Logger:
-    """@brief Message Logger class
+    """Message Logger class
 
     Used to log message to a file"""
     def __init__(self, debug=None):
@@ -179,7 +174,7 @@ class Logger:
             self.logstrtime = "%m/%d/%Y %H:%M:%S"
 
     def __call__(self, level, msg):
-        """@brief Default call method for Logger class
+        """Default call method for Logger class
 
         It's used to append a message to the logfile depending on
         the severity"""
@@ -195,17 +190,17 @@ class Logger:
         del timestr, outstr
 
     def fileno(self):
-        """@brief returns logfile fd
+        """returns logfile fd
 
         Used to pass it on some backends like xmlrpc"""
         return self.log_fd.fileno()
 
     def flush(self):
-        """@brief flushes the Logger fd to force the write operation"""
+        """flushes the Logger fd to force the write operation"""
         return self.log_fd.flush()
     
     def close(self):
-        """@brief closes the Logger fd"""
+        """closes the Logger fd"""
         try:
             self.log_fd.close()
         except: pass
@@ -215,7 +210,7 @@ mime_head = re.compile('=\\?(.*?)\\?(\w)\\?([^? \t\n]+)\\?=', re.IGNORECASE)
 encodings = {'q': mime_decode, 'b': decodestring }
 
 def mime_decode_header(line):
-    """@brief workaound to python mime_decode_header
+    """workaound to python mime_decode_header
 
     The original code doesn't support base64"""
     newline = ''
@@ -237,7 +232,7 @@ def mime_decode_header(line):
     return newline + line[pos:]
 
 def split_hdr(key, ct_string, dict):
-    """@brief Headers splitting
+    """Headers splitting
 
     extract file name and content-disposition"""
     if ct_string.find(';') != -1:
@@ -257,7 +252,7 @@ def split_hdr(key, ct_string, dict):
 
 
 def parse(submsg):
-    """@brief Parse a sub message"""
+    """Parse a sub message"""
     found = None
     if submsg.dict.has_key('content-type'):
         ct = submsg.dict['content-type']
@@ -279,7 +274,7 @@ def parse(submsg):
     return found
 
 def dupe_check(headers):
-    """@brief Check for duplicate headers
+    """Check for duplicate headers
 
     Some headers should be unique"""
     check = []
@@ -294,7 +289,7 @@ def dupe_check(headers):
     return 0
 
 def StageHandler(config, stage_type):
-    """@brief Meta class for a StageHandler Backend"""
+    """Meta class for a StageHandler Backend"""
 ##### Class Wrapper - Start
     ### I need class type before __init__
     try:
@@ -305,7 +300,7 @@ def StageHandler(config, stage_type):
         raise BadStageInput
         
     class StageHandler(Thread, input_classes[input_class]):
-        """@brief Base class for a StageHandler Backend"""
+        """Base class for a StageHandler Backend"""
         def __init__(self, Class, config, stage_type):
             """StageHandler Constructor"""
             self.process_message = getattr(self, 'process_' + stage_type, None)
@@ -396,18 +391,18 @@ def StageHandler(config, stage_type):
 
         ## Hooks to gracefully stop threads
         def accept_hook(self):
-            """@brief hook called when the server accepts an incoming connection"""
+            """hook called when the server accepts an incoming connection"""
             LOG(E_TRACE, '%s: I got a connection: Acquiring lock' % self.type)
             self.lock.acquire()
             return self._handle_accept()
 
         def del_hook(self):
-            """@brief hook called when a connection is terminated"""
+            """hook called when a connection is terminated"""
             LOG(E_TRACE, '%s: Connection closed: Releasing lock' % self.type)
             self.lock.release()
 
         def finish(self, force=0):
-            """@brief shutdown the Archiver system waiting for unterminated jobs"""
+            """shutdown the Archiver system waiting for unterminated jobs"""
             if not self.nowait and not force:
                 LOG(E_TRACE, '%s: Waiting thread job...' % self.getName())
                 self.lock.acquire()
@@ -415,7 +410,7 @@ def StageHandler(config, stage_type):
             self.close_all()
                         
         def sendmail(self, m_from, m_to, msg, aid=None, mid=None):
-            """@brief Rerouting of mails to nexthop (postfix)"""
+            """Rerouting of mails to nexthop (postfix)"""
             
             if msg is None: # E.g. regex has failed
                 LOG(E_ERR, '%s-sendmail: msg is None something went wrong ;(' % self.type)
@@ -481,12 +476,16 @@ def StageHandler(config, stage_type):
                 if len(server_reply) == len(m_to):
                     return self.do_exit(443, 'All recipients were rejected by the mailserver')
 
+                LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
+                ## TODO 2.x - It's ok to do this??
+                del self.hashdb[mid]
+                self.hashdb.sync()
                 return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
 
         def do_exit(self, code, msg='', extcode=None):
-            """@brief Exit function
+            """Exit function
 
-            @returns exit code and messages"""
+            @returns: exit code and messages"""
             self.del_channel()
             if not extcode:
                 extcode = code
@@ -494,7 +493,7 @@ def StageHandler(config, stage_type):
             return ' '.join([str(code), excode, msg])
 
         def process_storage(self, peer, sender, recips, data):
-            """@brief Stores the archived email using a Backend"""
+            """Stores the archived email using a Backend"""
             size = len(data)
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
@@ -587,7 +586,7 @@ def StageHandler(config, stage_type):
             return data
         
         def process_archive(self, peer, sender, recips, data):
-            """@brief Archives email meta data using a Backend"""
+            """Archives email meta data using a Backend"""
             global quotatbl
             global whitelist
 
@@ -722,7 +721,7 @@ def StageHandler(config, stage_type):
     return apply(StageHandler, (input_classes[input_class], config, stage_type))
 
 def multiplex(objs, function, *args):
-    """@brief Generic method multiplexer
+    """Generic method multiplexer
 
     It executes the given method and args for each object in the list"""
     res = []
@@ -733,7 +732,7 @@ def multiplex(objs, function, *args):
     return res
 
 def sig_int_term(signum, frame):
-    """@brief Handler for SIGINT and SIGTERM signals
+    """Handler for SIGINT and SIGTERM signals
 
     Terminates the StageHandler threads"""
     global isRunning
@@ -748,7 +747,7 @@ def sig_int_term(signum, frame):
         multiplex(serverPoll, 'stop')
 
 def do_shutdown(res=0):
-    """@brief Archiver system shutdown"""
+    """Archiver system shutdown"""
     global quotatbl
     ## Close quota hash handler
     if quotatbl:
@@ -771,7 +770,7 @@ if __name__ == '__main__':
         if len(args)>0:
             raise Exception
     except:
-        print 'Usage [%s] [-d] [-c alternate_config] [-u user]'
+        print 'Usage [%s] [-d] [-c alternate_config] [-u user]' % argv[0]
         sys_exit(-1)
 
     configfile='/etc/archiver.conf'

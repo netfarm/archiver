@@ -19,7 +19,7 @@
 # for more details.
 # ======================================================================
 ## @file lmtp.py
-## @brief lmtp/smtp client/server implementation
+## lmtp/smtp client/server implementation
 
 ## TODO 8BITMIME - should work normal way?
 ## Check 7/8bit stuff in headers
@@ -56,22 +56,20 @@ re_feat = re.compile(r"(?P<feature>[A-Za-z0-9][A-Za-z0-9\-]*)")
 ### Exceptions
 ##
 class UnknownProtocol(Exception):
-    """@exception UnknownProtocol The selected protocol is not implemented
-    @brief Exception: The selected protocol is not implemented"""
+    """UnknownProtocol The selected protocol is not implemented"""
     pass
 
 class BadPort(Exception):
-    """@exception BadPort The specified port is invalid
-    @brief Exception: The specified port is invalid"""
+    """BadPort The specified port is invalid"""
     pass
 
 ### Helpers
 def check7bit(address):
-    """@brief check if an address is 7bit ascii
+    """check if an address is 7bit ascii
 
     Check if an address is 7bit ascii by encoding to charset ascii
-    @param address to check
-    @return 1 if the @a address is ok or 0 if the @a address is not 7bit ascii
+    @param address: the address to check
+    @return: 1 if the address is ok or 0 if the address is not 7bit ascii
     """
     try:
         address.encode('ascii')
@@ -80,19 +78,19 @@ def check7bit(address):
         return 0
     
 def unquote(address, map=SPECIAL):
-    """@brief unquote a quoted address
+    """unquote a quoted address
 
-    @param address is the address to uquote
-    @param map is the special quoted char list
-    @return @a address unquoted"""
+    @param address: is the address to uquote
+    @param map: is the special quoted char list
+    @return: address unquoted"""
     for c in map+'\\':
         address = c.join(address.split(QUOTE+c))
     return address
 
 def validate(address):
-    """@brief validate address syntax
-    @param address is the address to validate
-    @return the valid and unquoted address if ok or None"""
+    """validate address syntax
+    @param address: is the address to validate
+    @return: the valid and unquoted address if ok or None"""
     for i in range(len(address)):
         if address[i] in SPECIAL:
             if i==0 or address[i-1] != '\\':
@@ -102,7 +100,7 @@ def validate(address):
 
 ### Envelope strict rfc821 check
 def getaddr(keyword, arg):
-    """@brief strict rfc821 check for envelopes"""
+    """strict rfc821 check for envelopes"""
     address = None 
     options = None
     keylen = len(keyword)
@@ -159,7 +157,7 @@ def getaddr(keyword, arg):
 
 ### LMTP Client Class
 class LMTP(SMTP):
-    """@brief LMTP Base Class
+    """LMTP Base Class
 
     this class hacks smtplib's SMTP class into a shape where it will
     successfully pass a message off to Cyrus's LMTP daemon.
@@ -177,7 +175,7 @@ class LMTP(SMTP):
         
     ### TODO 2.x - defaults to localhost?
     def connect(self, host='localhost', port=LMTP_PORT):
-        """@brief Connect to a host on a given port.
+        """Connect to a host on a given port.
 
         If the hostname starts with `unix:', the remainder of the string
         is assumed to be a unix domain socket.
@@ -197,7 +195,7 @@ class LMTP(SMTP):
         return (code, msg)
 
     def lhlo(self, name='localhost'):
-        """ @brief LMTP 'lhlo' command.
+        """ LMTP 'lhlo' command.
         
         Hostname to send for this command defaults to localhost.
         """
@@ -227,7 +225,7 @@ class LMTP(SMTP):
 
 ### LMTP Server Stuff
 class LMTPChannel(async_chat):
-    """@brief LMTPChannel for communications with clients
+    """LMTPChannel for communications with clients
 
     A subclass of async_chat, ideal to handle "chat" like protocols"""
     COMMAND = 0
@@ -402,9 +400,9 @@ class LMTPChannel(async_chat):
         self.push('354 End data with <CR><LF>.<CR><LF>')
 
 class LMTPServer(dispatcher):
-    """@brief LMTPServer dispatcher class implemented as asyncore dispatcher"""
+    """LMTPServer dispatcher class implemented as asyncore dispatcher"""
     def __init__(self, localaddr, del_hook=None):
-        """@brief The Constructor
+        """The Constructor
 
         Creates the listening socket"""
         self.debuglevel = 0
@@ -467,11 +465,11 @@ class LMTPServer(dispatcher):
             except: pass
 
     def close_all(self):
-        """@brief closes all connections"""
+        """closes all connections"""
         asyn_close_all(self.map)
         
     def handle_accept(self):
-        """@brief handle client connections
+        """handle client connections
         gracefully shutdown if some signal has interrupted self.accept()"""
         try:
             conn, addr = self.accept()
@@ -482,7 +480,7 @@ class LMTPServer(dispatcher):
                     
     # API for "doing something useful with the message"
     def process_message(self, peer, mailfrom, rcpttos, data):
-        """@brief Override this abstract method to handle messages from the client.
+        """Override this abstract method to handle messages from the client.
 
         peer is a tuple containing (ipaddr, port) of the client that made the
         socket connection to our lmtp port.
@@ -509,7 +507,7 @@ class LMTPServer(dispatcher):
 
 ### SMTP Server stuff
 class SMTPChannel(smtpd_SMTPChannel):
-    """@brief Communication channel to handle a chat-style connection"""
+    """Communication channel to handle a chat-style connection"""
     COMMAND = 0
     DATA = 1
     def __init__(self, server, conn, addr, map=None):
@@ -536,7 +534,7 @@ class SMTPChannel(smtpd_SMTPChannel):
         self.__getaddr = getaddr
         
     def smtp_MAIL(self, arg):
-        """@brief SMTP 'mail' command"""
+        """SMTP 'mail' command"""
         address, options = self.__getaddr('FROM:', arg)
         if address is None:
             self.push('500 5.5.2 Syntax: MAIL FROM:<address> [ SP <mail-parameters> ]')
@@ -552,7 +550,7 @@ class SMTPChannel(smtpd_SMTPChannel):
             self.push('250 2.0.0 Ok')
 
     def smtp_RCPT(self, arg):
-        """@brief SMTP 'rcpt' command"""
+        """SMTP 'rcpt' command"""
         if self.__mailfrom is None:
             self.push('503 5.5.1 Error: need MAIL command')
             return
@@ -569,7 +567,7 @@ class SMTPChannel(smtpd_SMTPChannel):
         self.socket.close()
                 
 class SMTPServer(LMTPServer):
-    """@brief Async Server, it handle the connection using SMTPChannel"""
+    """Async Server, it handle the connection using SMTPChannel"""
     def handle_accept(self):
         ### gracefully shutdown if some signal has interrupted self.accept()
         try:
@@ -580,15 +578,15 @@ class SMTPServer(LMTPServer):
         except: pass
 
 class DebuggingServer(LMTPServer):
-    """@brief DebuggingServer based on LMTPServer"""
+    """DebuggingServer based on LMTPServer"""
     def __init__(self, localaddr):
-        """@brief Init LMTPServer Class"""
+        """Init LMTPServer Class"""
         LMTPServer.__init__(self, localaddr)
         ## Set custom banner
         self.banner = "DebuggingServer using " + __version__
          
     def process_message(self, peer, mailfrom, rcpttos, data):
-        """@brief Do something with the gathered message"""
+        """Do something with the gathered message"""
         inheaders = 1
         lines = data.split('\n')
         print '----------- MESSAGE DATA ------------'  

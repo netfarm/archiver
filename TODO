@@ -2,6 +2,9 @@ BUGS
 - not 7bit header mail are trashed (it should be ok since, they aren't rfc compliant)
 - bcc mails (no recipients) are trashed - possible fix: postfix 2 can add:
   Delivered-To: header with envelope address
+- unix sockets and asyncore are not friends, you should use only tcp sockets
+- thread interlock stuff sometime doesn't work, i.e. if lock check is enabled
+  archiver will not shutdown in a clean way
 
 TODO 1.x:
 - Modularize and make backend/frontend
@@ -22,7 +25,7 @@ TODO 2.x:
 - [done] Check duplicate headers - check
          clamav sends mails with multiple cc
          http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=213509&mbox=yes
-- [done need tests] Use lmtp or smtp for listening services (integrates with amavisd-new)
+- [done unix socket/asyncore is buggy] Use lmtp or smtp for listening services (integrates with amavisd-new)
 - [done] Multiple from support
 - [done] rework configurations system - use ConfigParses
 - [done] Implement backends (fixme: set timeout - config?)
@@ -49,18 +52,18 @@ TODO 2.x:
 - [done] add a E_TRACE with connections
 - [done] fix loglevel/debuglevel in lmtp.py
 - [done] remove the archiver id header of whitelist mails or storage backend will process it
-- [done] Fix thread locking stuff - hooked accept and channel _del_ method
+- [done sometime buggy] Fix thread locking stuff - hooked accept and channel _del_ method
 - [done] add a prefix to logs
 - [done] Doxygen-ize: all methods are documented, still needed additional docs
 - [checked] sendmail method need extensive checks
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
-- test LMTP/SMTPServer classes
-- Make templates for mails - needed ?
-- Make README.txt
-- Storage sql table needs to be rewritten (indexes, unique, etc) -> guancio
-- add timeout to connections (using sigalarm? this can break threads?) - not so trivial
 - make debian package
+- Make README.txt
+- add timeout to connections (using sigalarm? this can break threads?) - not so trivial
 - check lmtp socket
 - unmimify attachment filenames
 - [partially done - null chars are stripped] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
 - unmimify email addresses??
+- add info about unix socket + asyncore problem
+- update postfix templates
+- check -> sendmail: Some of recipients rejected / mail is expunged from hashdb, correct??

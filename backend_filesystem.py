@@ -17,7 +17,7 @@
 # for more details.
 # ======================================================================
 ## @file backend_filesystem.py
-## @brief Filesystem Storage only Backend
+## Filesystem Storage only Backend
 
 __doc__ = '''Netfarm Archiver - release 2.0.0 - Filesystem backend'''
 __version__ = '2.0.0'
@@ -26,16 +26,14 @@ __all__ = [ 'Backend' ]
 from archiver import *
 from sys import exc_info
 from os import path, access, makedirs, F_OK, R_OK, W_OK
-from time import localtime
 
 ##
 class BadStorageDir(Exception):
-    """@exception BadStorageDir Bad Storage directory in config file
-    @brief Exception: Bad Storage directory in config file"""
+    """BadStorageDir Bad Storage directory in config file"""
     pass
 
 class Backend(BackendBase):
-    """@brief Filesystem Backend Class
+    """Filesystem Backend Class
 
     Stores emails on filesystem"""
     def __init__(self, config, stage_type, ar_globals):
@@ -53,13 +51,19 @@ class Backend(BackendBase):
         
         self.LOG(E_ALWAYS, 'Filesystem Backend (%s) at %s ' % (self.type, self.storagedir))
         del ar_globals
-                
+
+    ## Gets mailpath and filename
+    def get_paths(self, data):
+        month = data['date'][1]
+        mailpath = path.join(self.storagedir, str(data['year']), str(month))
+        filename = path.join(mailpath, str(data['pid']))
+        return mailpath, filename
+        
     ## Storage on filesystem
     def process(self, data):
-        month = data['date'][1]
+        mailpath, filename = self.get_paths(data)
 
         ## First check integrity
-        mailpath = path.join(self.storagedir, str(data['year']), str(month))
         if not access(mailpath, F_OK | R_OK | W_OK):
             try:
                 makedirs(mailpath, 0700)
@@ -70,7 +74,6 @@ class Backend(BackendBase):
                 return 0, 443, '%s: %s' % (t, val)
             
         try:
-            filename = path.join(mailpath, str(data['pid']))
             fd = open(filename, 'w')
             fd.write(data['mail'])
             fd.flush()
@@ -84,5 +87,5 @@ class Backend(BackendBase):
             return 0, 443, '%s: %s' % (t, val)
 
     def shutdown(self):
-        """@brief Backend Shutdown callback"""
+        """Backend Shutdown callback"""
         self.LOG(E_ALWAYS, 'Filesystem Backend (%s): shutting down' % self.type)

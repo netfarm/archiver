@@ -17,7 +17,7 @@
 # for more details.
 # ======================================================================
 ## @file backend_xmlrpc.py
-## @brief XMLrpc Storage and Archive Backend
+## XMLrpc Storage and Archive Backend
 
 __doc__ = '''Netfarm Archiver - release 2.0.0 - XmlRpc backend'''
 __version__ = '2.0.0'
@@ -30,15 +30,14 @@ from urlparse import urlparse
 
 ##
 class BadUrlSyntax(Exception):
-    """@exception BadUrlSyntax Bad url syntax in config file
-    @brief Exception: Bad url syntax in config file"""
+    """BadUrlSyntax Bad url syntax in config file"""
     pass
 
 ## TODO 2.x this method is 100% ok??
 def decode_url(url):
-    """@brief Parses url from config file
-    @param url is like http://username:password@host:8080/InsertMail/insert
-    @return a tuple @a hostame, @a port, @a url, @a username, @a password"""
+    """Parses url from config file
+    @param url: is like http://username:password@host:8080/InsertMail/insert
+    @return: a tuple hostame, port, url, username, password"""
     res = urlparse(url)
     username, password = None, None
     if res[0].lower() != 'http':
@@ -63,7 +62,7 @@ def decode_url(url):
     return hostname, port, url, username, password
 
 class Backend(BackendBase):
-    """@brief XMLrpc Backend using python-xmlrpc
+    """XMLrpc Backend using python-xmlrpc
 
     This backend can be used with a xmlrpc capable server like zope""" 
     def __init__(self, config, stage_type, ar_globals):
@@ -84,9 +83,9 @@ class Backend(BackendBase):
         del ar_globals
         
     def process(self, data):
-        """@brief Archive backend proces
-        @param data The @a data argument is a dict containing mail info and the mail itself
-        @return @a year as status and @a pid as code"""
+        """Archive backend proces
+        @param data: The data argument is a dict containing mail info and the mail itself
+        @return: year as status and pid as code"""
         try:
             status, code = self.client.execute(self.url, [data], -1.0, self.username, self.password)
             return status, code, 'Ok'
@@ -98,6 +97,6 @@ class Backend(BackendBase):
             return 0, 443, '%s: %s' % (t, val)
         
     def shutdown(self):
-        """@brief Backend Shutdown callback"""
+        """Backend Shutdown callback"""
         self.LOG(E_ALWAYS, 'XmlRpc Backend (%s): closing connection' % self.type)
         self.client = None

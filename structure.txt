@@ -26,11 +26,15 @@ Netfarm Mail Archiver - Structure for version 2.0
 - archiver 2nd stage -> email delivering using smtp/lmtp to smtpd 3rd instance
 
 
+Implemented backends:
+
 Archive Backends:
   - xmlrpc
   - direct rdbms
+  - swish-e Berkeley DB pid-generator
 
 Storage Backends:
   - xmlrpc
   - direct rdbms
   - filesystem
+  - swish-e filesystem + spool for swish-e processing
