@@ -542,8 +542,8 @@ class DebuggingServer(LMTPServer):
         print '----------- MESSAGE DATA ------------'  
         if peer:
             print "Peer: %s:%d" % peer
-        print "Mail from:",mailfrom
-        print "Recipients:",','.join(rcpttos)
+        print "Mail from:", mailfrom
+        print "Recipients:", ','.join(rcpttos)
         print '---------- MESSAGE HEADERS ----------'
         for line in lines:
             if inheaders and not line:

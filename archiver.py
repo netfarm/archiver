@@ -297,7 +297,7 @@ def StageHandler(config, stage_type):
                 self.debuglevel = 0
             
             ### Set custom banner
-            self.banner = 'Netfarm Archiver [%s] version [%s]' % (stage_type, __version__)
+            self.banner = 'Netfarm Archiver [%s] version %s' % (stage_type, __version__)
             
             try:
                 output, address = config.get(stage_type, 'output').split(':', 1)
@@ -399,11 +399,11 @@ def StageHandler(config, stage_type):
                         res = server_reply[rcpt]
                         LOG(E_ERR, '%s-sendmail error: %s - %s' % (self.type, res[0], res[1]))
                 elif type(server_reply)==type(''):
-                    LOG(E_ERR, '%s-sendmail reply error, server redurned error code %s' % (self.type, server_reply))
-                    return self.do_exit(443, 'Server return code is ' + server_reply)
+                    LOG(E_ERR, '%s-sendmail reply error, server returned error code %s' % (self.type, server_reply))
+                    return self.do_exit(443, 'Server returned code ' + server_reply)
                 else:
                     LOG(E_ERR, '%s-sendmail unknown error: %s' % (self.type, str(server_reply)))
-                    return self.do_exit(443, 'Internal error')
+                    return self.do_exit(443, 'Internal server error')
                 
                 ### TODO 2.x - find the right way
                 if len(server_reply) == len(m_to):
@@ -485,7 +485,7 @@ def StageHandler(config, stage_type):
                 except:
                     t, val, tb = exc_info()
                     del tb
-                    LOG(E_ERR, '%: Error overwrting X-Archiver-ID header: %s' % (self.type, str(val)))
+                    LOG(E_ERR, '%: Error overwriting X-Archiver-ID header: %s' % (self.type, str(val)))
                     return None
             else:
                 data = headers.strip() + NL + archiverid + STARTOFBODY + data[msg.startofbody:]
@@ -665,7 +665,7 @@ def do_shutdown(res=0):
         unlink(config.get('global', 'pidfile'))
     except: pass
 
-    LOG(E_ERR, '[Main] Waiting child threads')
+    LOG(E_ERR, '[Main] Waiting for child threads')
     multiplex(serverPoll, 'close')
     LOG(E_ERR, '[Main] Shutdown complete')
     LOG.close()
@@ -718,7 +718,7 @@ if __name__ == '__main__':
     try:
         pidfile = config.get('global', 'pidfile')
     except:
-        LOG(E_ERR, '[Main] Missing pidfile options in config')
+        LOG(E_ERR, '[Main] Missing pidfile in config')
         do_shutdown(-4)
         
     locked = 1
@@ -812,7 +812,7 @@ if __name__ == '__main__':
         granularity = GRANULARITY
 
     while isRunning:
-        ### Wait child threads
+        ### Wait for child threads
         multiplex(serverPoll, 'join', granularity)
     ### Shutdown
     do_shutdown(0)
