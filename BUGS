@@ -1,0 +1,2 @@
+error: uncaptured python exception, closing channel <SMTPChannel connected at 8275804> (exceptions.TypeError:__call__() takes exactly 3 arguments (2 given) [/usr/lib/python2.1/asyncore.py|poll3|172] [/usr/lib/python2.1/asyncore.py|handle_read_event|386] [/usr/lib/python2.1/asynchat.py|handle_read|130] [/usr/lib/python2.1/smtpd.py|found_terminator|171] [/usr/lib/archiver/archiver.py|process_archive|633] [./backend_rdbms.py|process_archive|210])
+
