@@ -56,7 +56,10 @@ TODO 2.x:
 - [done] Doxygen-ize: all methods are documented, still needed additional docs
 - [checked] sendmail method need extensive checks
 - [done] Win32 port with ntservice support
+- [done] py2exe wrapper
 - [partially done - null chars are stripped] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
+
+- win32 setup using py2exe output
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package
