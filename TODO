@@ -60,3 +60,6 @@ TODO 2.x:
 - add timeout to connections (using sigalarm? this can break threads?) - not so trivial
 - make debian package
 - check lmtp socket
+- unmimify attachment filenames
+- check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
+- unmimify email addresses??

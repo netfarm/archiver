@@ -72,6 +72,8 @@ from base64 import encodestring
 def sql_quote(v):
     quote_list = [ '\'', '"', '\\' ]
     res = ''
+    # Remove NULL - very bad mails
+    v = v.replace('\x00', '')
     for i in range(len(v)):
         if v[i] in quote_list:
             res = res + '\\'

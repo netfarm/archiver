@@ -30,7 +30,7 @@ __all__ = [ 'BackendBase',
 
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
-from time import strftime, time, localtime, sleep
+from time import strftime, time, localtime, sleep, mktime
 from sys import argv, exc_info, stdin, stdout, stderr
 from sys import exit as sys_exit
 from os import fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
@@ -446,8 +446,13 @@ def StageHandler(config, stage_type):
                 aid=self.hashdb[mid]
                 LOG(E_ERR, '%s: Message has yet been processed' % self.type)
                 return self.sendmail(sender, recips, data, aid, mid)
-            
+
             m_date = msg.getdate('Date')
+            try:
+                mktime(m_date)
+            except:
+                m_date = None
+                            
             if m_date is None:
                 LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
                 m_date = localtime(time())
@@ -597,6 +602,11 @@ def StageHandler(config, stage_type):
 
             ### Date extraction
             m_date = msg.getdate('Date')
+            try:
+                mktime(m_date)
+            except:
+                m_date = None
+                
             if m_date is None:
                 LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
                 m_date = localtime(time())
