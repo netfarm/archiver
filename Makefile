@@ -1,14 +1,20 @@
+VERSION=2.0.0
 PYTHON_VERSION=$(shell python -c 'import sys ; print sys.version[:3]')
-DIST=archiver.tar.gz
-MODULES=backend_*.py archiver.py archiver_svc.py lmtp.py
-CONFS=archiver.ini archiver-win32.ini
-TOOLS=Doxyfile pythfilter.py setup_all.py init.d NetfarmArchiver.nsi nma.ico
-DIRS=sql postfix
+
+DIST=archiver-$(VERSION).tar.gz
+SUBDIRS=sql postfix
 CONTRIB=$(wildcard sql/*.sql) $(wildcard postfix/*.cf) 
-DOCS=copyright.txt TODO ChangeLog* structure.txt py21_rfc822.diff
+BACKENDS=$(wildcard backend_*.py)
+MODULES=$(BACKENDS) archiver.py archiver_svc.py lmtp.py
+
+CONFS=archiver.ini archiver-win32.ini .pycheckrc
+TOOLS=Doxyfile pythfilter.py setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
+DOCS=copyright.txt TODO $(wildcard ChangeLog*) structure.txt py21_rfc822.diff
+TESTFILES=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
+
 ALL=Makefile $(MODULES) $(DOCS) $(TOOLS) $(CONFS) $(CONTRIB)
-TEST=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
-DISTDIR=dist/archiver
+DISTDIR=dist/archiver-$(VERSION)
+
 all: $(DIST)
 
 compile:
@@ -20,7 +26,6 @@ cleandoc:
 	rm -fr doc api *.log
 
 distclean: clean cleandoc
-	
 
 pycheck:
 	pychecker backend_*.py archiver.py lmtp.py
@@ -55,14 +60,13 @@ epycheck:
 epydoc: epydoc-html epydoc-pdf
 docs: doxygen epydoc
 
-
 dist: $(DIST)
-$(DIST): $(ALL) $(TEST)
+$(DIST): $(ALL)
 	@rm -fr dist
 	@mkdir -p $(DISTDIR)
-	@for dir in $(DIRS); do echo Creating $(DISTDIR)/$$dir ; install -m755 -d $(DISTDIR)/$$dir; done
+	@for dir in $(SUBDIRS); do echo Creating $(DISTDIR)/$$dir ; install -m755 -d $(DISTDIR)/$$dir; done
 	@for file in $(ALL); do echo Installing $(DISTDIR)/$$file ; install -m644 $$file $(DISTDIR)/$$file; done
 	@chmod 755 $(DISTDIR)/{archiver,lmtp,pythfilter,setup_all}.py
 	@chmod 755 $(DISTDIR)/init.d
-	@( cd dist && tar czf ../$(DIST) archiver )
-	@rm -fr dist
+	@( cd dist && tar czf ../$(DIST) archiver-$(VERSION) )
+	@echo Cleaning up dist && rm -fr dist
