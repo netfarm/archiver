@@ -18,6 +18,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
+## \file lmtp.py
+## \brief lmtp/smtp client/server implementation
 
 ## TODO 8BITMIME - should work normal way?
 ## Check 7/8bit stuff in headers

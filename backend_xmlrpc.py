@@ -16,6 +16,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
+## \file backend_xmlrpc.py
+## \brief XMLrpc Storage and Archive Backend
 
 __doc__ = '''Netfarm Archiver - release 2.x - XmlRpc backend'''
 __version__ = '2.0a1'
@@ -27,10 +29,13 @@ from xmlrpc import client, fault, setLogLevel, setLogger
 from urlparse import urlparse
 
 class BadUrlSyntax(Exception):
+    """\brief Exception: Bad syntax in config file"""
     pass
 
 ### TODO 2.x this method is 100% ok??
 def decode_url(url):
+    """\brief Parses host/port/auth from config file
+    \return a tuple \a hostame, \a port, \a url, \a username, \a password"""
     res = urlparse(url)
     username, password = None, None
     if res[0].lower() != 'http':
@@ -55,7 +60,11 @@ def decode_url(url):
     return hostname, port, url, username, password
 
 class Backend(BackendBase):
+    """\brief XMLrpc Backend using python-xmlrpc
+
+    This backend can be used with a xmlrpc capable server like zope""" 
     def __init__(self, config, stage_type, ar_globals):
+        """The constructor"""
         self.config = config
         self.type = stage_type
         self.LOG = ar_globals['LOG']
@@ -72,7 +81,9 @@ class Backend(BackendBase):
         del ar_globals
         
     def process(self, data):
-        ### archive backend returns year as status and pid as code
+        """\brief Archive backend proces
+        \param data The \a data argument is a dict containing mail info and the mail itself
+        \return \a year as status and \a pid as code"""
         try:
             status, code = self.client.execute(self.url, [data], -1.0, self.username, self.password)
             return status, code, 'Ok'
@@ -84,5 +95,6 @@ class Backend(BackendBase):
             return 0, 443, '%s: %s' % (t, val)
         
     def shutdown(self):
+        """\brief Backend Shutdown callback"""
         self.LOG(E_ALWAYS, 'XmlRpc Backend (%s): closing connection' % self.type)
         self.client = None

@@ -16,6 +16,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
+## \file backend_rdbms.py
+## \brief RDBMS Storage and Archive Backend
 
 __doc__ = '''Netfarm Archiver - release 2.x - Rdbms backend'''
 __version__ = '2.0a1'

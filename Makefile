@@ -9,8 +9,15 @@ compile:
 clean:
 	rm -f *~ *.pyc *.pyo *.flc $(DIST)
 
+cleandoc:
+	rm -fr doc
+
 pycheck:
 	pychecker *.py
+
+doxygen:
+	doxygen doxygen.cfg
+
 
 $(DIST): $(ALL) $(TEST)
 	tar czvf $(DIST) $(ALL) $(TEST)

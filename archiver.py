@@ -16,6 +16,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
+## \file archiver.py
+## \brief Netfarm Mail Archiver [core]
 
 __doc__ = '''Netfarm Archiver relase 2.x - Main worker'''
 __version__ = '2.0a1'
@@ -107,14 +109,27 @@ class BadBackendTypeError(Exception):
 
 ### Backend interface class
 class BackendBase:
+    """\brief Base Backend Class
+
+        This class should be derived to make a specialized Backend class"""
+    
     def process(self, data):
+        """\brief method to process data
+
+        should be implemented when subclassing"""
         del data
         return 0, 433, 'Backend not configured'
         
     def shutdown(self):
+        """\brief method to shudown and cleanup the backend
+
+        should be implemented when subclassing"""
         pass
 
 class DebugBackend(BackendBase):
+    """\brief A fake Backend
+
+    used only to debug the process"""
     def process(self, data):
         LOG(E_INFO, "[DebugBackend]: %s" % str(data))
         return 1234, 250, 'Ok'
@@ -372,7 +387,7 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s-sendmail: Failed to connect to output server: %s' % (self.type, str(val)))
                 return self.do_exit(443, 'Failed to connect to output server')
 
-            ### Null path - smtplib doesn't enclosed '' in brackets
+            ### Null path - smtplib doesn't enclose '' in brackets
             if m_from == '':
                 m_from = '<>'
 
