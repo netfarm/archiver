@@ -65,8 +65,13 @@ class BadPort(Exception):
     pass
 
 ### Helpers
-## Checking for invalid non 7 bit addresses
 def check7bit(address):
+    """@brief check if an address is 7bit ascii
+
+    Check if an address is 7bit ascii by encoding to charset ascii
+    @param address to check
+    @return 1 if the @a address is ok or 0 if the @a address is not 7bit ascii
+    """
     try:
         address.encode('ascii')
         return 1
@@ -74,12 +79,19 @@ def check7bit(address):
         return 0
     
 def unquote(address, map=SPECIAL):
+    """@brief unquote a quoted address
+
+    @param address is the address to uquote
+    @param map is the special quoted char list
+    @return @a address unquoted"""
     for c in map+'\\':
         address = c.join(address.split(QUOTE+c))
     return address
 
-## validate addresses
 def validate(address):
+    """@brief validate address syntax
+    @param address is the address to validate
+    @return the valid and unquoted address if ok or None"""
     for i in range(len(address)):
         if address[i] in SPECIAL:
             if i==0 or address[i-1] != '\\':
@@ -89,6 +101,7 @@ def validate(address):
 
 ### Envelope strict rfc821 check
 def getaddr(keyword, arg):
+    """@brief strict rfc821 check for envelopes"""
     address = None 
     options = None
     keylen = len(keyword)
@@ -97,11 +110,11 @@ def getaddr(keyword, arg):
     
     address = arg[keylen:].strip()
 
-    ### Check for non 7bit
+    ## Check for non 7bit
     if not check7bit(address):
         return None, 'Non 7bit'
 
-    ### Relay regexp match
+    ## Relay regexp match
     res = re_rel.match(address)
     if res:
         address, options = res.groups()
@@ -111,31 +124,31 @@ def getaddr(keyword, arg):
             return None, 'Unmatched regex'
         address, options = res.groups()
 
-    ### Invalid space is needed
+    ## Invalid space is needed
     if len(options) and options[0] != ' ':
         return None, 'Bad option syntax'
 
     options = options.strip()
 
-    ### <> Null return path
+    ## <> Null return path
     if len(address)<3:
         return '', None
 
     if address.count('@')>1:
         return None, 'Too many @'
 
-    ### Workaround to 'email@example.com'
+    ## Workaround to 'email@example.com'
     if address[0]=='\'' and address[-1]=='\'':
         address = address[1:-1]
 
     res = address.split('@', 1)
     address = validate(res[0])
 
-    ### Invalid address
+    ## Invalid address
     if address is None:
         return None, 'Bad quoted sequence'
 
-    ### Uh we have also a domain
+    ## Uh we have also a domain
     if len(res)>1:
         domain = validate(res[1])
         if domain:
@@ -144,13 +157,16 @@ def getaddr(keyword, arg):
     return address, options
 
 ### LMTP Client Class
-
-# this class hacks smtplib's SMTP class into a shape where it will
-# successfully pass a message off to Cyrus's LMTP daemon.
-# Also adds support for connecting to a unix domain socket.
 class LMTP(SMTP):
+    """@brief LMTP Base Class
+
+    this class hacks smtplib's SMTP class into a shape where it will
+    successfully pass a message off to Cyrus's LMTP daemon.
+    Also adds support for connecting to a unix domain socket."""
+    
     lhlo_resp = None
     def __init__(self, host='', port=0):
+        """The constructor"""
         self.lmtp_features  = {}
         self.esmtp_features = self.lmtp_features
         if host:
@@ -160,7 +176,7 @@ class LMTP(SMTP):
         
     ### TODO 2.x - defaults to localhost?
     def connect(self, host='localhost', port=LMTP_PORT):
-        """Connect to a host on a given port.
+        """@brief Connect to a host on a given port.
 
         If the hostname starts with `unix:', the remainder of the string
         is assumed to be a unix domain socket.
@@ -180,7 +196,8 @@ class LMTP(SMTP):
         return (code, msg)
 
     def lhlo(self, name='localhost'):
-        """ LMTP 'lhlo' command.
+        """ @brief LMTP 'lhlo' command.
+        
         Hostname to send for this command defaults to localhost.
         """
         self.putcmd("lhlo",name)
@@ -192,7 +209,7 @@ class LMTP(SMTP):
         if code != 250:
             return (code, msg)
         self.does_esmtp = 1
-        # parse the lhlo response
+        ## parse the lhlo response
         resp = self.lhlo_resp.split('\n')
         del resp[0]
         for each in resp:
@@ -203,15 +220,19 @@ class LMTP(SMTP):
                 self.lmtp_features[feature] = params
         return (code, msg)
 
-    # "re-route" non lmtp commands
+    ## "re-route" non lmtp commands
     helo = lhlo
     ehlo = lhlo
 
 ### LMTP Server Stuff
 class LMTPChannel(async_chat):
+    """@brief LMTPChannel for communications with clients
+
+    A subclass of async_chat, ideal to handle "chat" like protocols"""
     COMMAND = 0
     DATA = 1
     def __init__(self, server, conn, addr, map=None):
+        """The constructor"""
         self.ac_in_buffer = ''
         self.ac_out_buffer = ''
         self.producer_fifo = fifo()
@@ -233,16 +254,17 @@ class LMTPChannel(async_chat):
         self.set_terminator('\r\n')
         self.__getaddr = getaddr
             
-    # Overrides base class for convenience
     def push(self, msg):
+        """Overrides base class for convenience"""
         async_chat.push(self, msg + '\r\n')
         
-    # Implementation of base class abstract method
+    
     def collect_incoming_data(self, data):
+        """Implementation of base class abstract method"""
         self.__line.append(data)
 
-    # Implementation of base class abstract method
     def found_terminator(self):
+        """Implementation of base class abstract method"""
         line = EMPTYSTRING.join(self.__line)
         self.__line = []
         if self.__state == self.COMMAND:
@@ -267,8 +289,8 @@ class LMTPChannel(async_chat):
             if self.__state != self.DATA:
                 self.push('451 4.3.0 Internal confusion')
                 return
-            # Remove extraneous carriage returns and de-transparency according
-            # to RFC 821, Section 4.5.2.
+            ## Remove extraneous carriage returns and de-transparency according
+            ## to RFC 821, Section 4.5.2.
             data = []
             for text in line.split('\r\n'):
                 if text and text[0] == '.':
@@ -295,6 +317,7 @@ class LMTPChannel(async_chat):
                 
     # LMTP commands
     def lmtp_LHLO(self, arg):
+        """ LMTP LHLO Command implementation"""
         if not arg:
             self.push('500 5.5.2 Syntax: LHLO hostname')
             return
@@ -308,17 +331,20 @@ class LMTPChannel(async_chat):
             self.push('250 PIPELINING')
 
     def lmtp_NOOP(self, arg):
+        """ LMTP NOOP Command implementation"""
         if arg:
             self.push('500 5.5.2 Syntax: NOOP')
         else:
             self.push('250 2.0.0 Ok')
 
     def lmtp_QUIT(self, arg):
+        """ LMTP QUIT Command implementation"""
         del arg
         self.push('221 2.0.0 Bye')
         self.close_when_done()
 
     def lmtp_RSET(self, arg):
+        """ LMTP RSET Command implementation"""
         del arg
         self.__line = []
         self.__state = self.COMMAND
@@ -330,6 +356,7 @@ class LMTPChannel(async_chat):
    
 
     def lmtp_MAIL(self, arg):
+        """ LMTP MAIL Command implementation"""
         address, options = self.__getaddr('FROM:', arg)
         if address is None:
             self.push('500 5.5.2 Syntax: MAIL FROM:<address> [ SP <mail-parameters> ]')
@@ -345,6 +372,7 @@ class LMTPChannel(async_chat):
             self.push('250 2.0.0 Ok')
 
     def lmtp_RCPT(self, arg):
+        """ LMTP RCPT Command implementation"""
         if not self.__mailfrom:
             self.push('503 5.5.1 Error: need MAIL command')
             return
@@ -356,10 +384,12 @@ class LMTPChannel(async_chat):
         self.push('250 2.0.0 Ok')
 
     def lmtp_BDAT(self, arg):
+        """ LMTP BDAT Command implementation [Not implemented]"""
         del arg
         self.push('502 5.5.1 BDAT not implemented')
 
     def lmtp_DATA(self, arg):
+        """ LMTP DATA Command implementation"""
         if not self.__rcpttos:
             self.push('503 5.5.1 Error: need RCPT command')
             return
@@ -371,7 +401,11 @@ class LMTPChannel(async_chat):
         self.push('354 End data with <CR><LF>.<CR><LF>')
 
 class LMTPServer(dispatcher):
+    """@brief LMTPServer dispatcher class implemented as asyncore dispatcher"""
     def __init__(self, localaddr, del_hook=None):
+        """@brief The Constructor
+
+        Creates the listening socket"""
         self.debuglevel = 0
         self.loop = loop
         self.banner = __version__
@@ -418,11 +452,12 @@ class LMTPServer(dispatcher):
         dispatcher.__init__(self, self.socket, self.map)
         self.listen(5)
 
-    ### Workaround for unix sockets with select/poll
     def writable(self):
+        """Workaround for unix sockets with select/poll"""
         return 0
 
     def close(self):
+        """Close the channel and the socket"""
         self.del_channel(self.map)
         self.socket.close()
         if self.localaddr[1]==0:
@@ -434,7 +469,8 @@ class LMTPServer(dispatcher):
         asyn_close_all(self.map)
         
     def handle_accept(self):
-    ### gracefully shutdown if some signal has interrupted self.accept()
+        """@brief handle client connections
+        gracefully shutdown if some signal has interrupted self.accept()"""
         try:
             conn, addr = self.accept()
             channel = LMTPChannel(self, conn, addr, self.map)
@@ -444,7 +480,7 @@ class LMTPServer(dispatcher):
                     
     # API for "doing something useful with the message"
     def process_message(self, peer, mailfrom, rcpttos, data):
-        """Override this abstract method to handle messages from the client.
+        """@brief Override this abstract method to handle messages from the client.
 
         peer is a tuple containing (ipaddr, port) of the client that made the
         socket connection to our lmtp port.
@@ -536,14 +572,15 @@ class SMTPServer(LMTPServer):
         except: pass
 
 class DebuggingServer(LMTPServer):
+    """@brief DebuggingServer based on LMTPServer"""
     def __init__(self, localaddr):
-        ### Init LMTPServer Class
+        """@brief Init LMTPServer Class"""
         LMTPServer.__init__(self, localaddr)
-        ### Set custom banner
+        ## Set custom banner
         self.banner = "DebuggingServer using " + __version__
-        
-    # Do something with the gathered message
+         
     def process_message(self, peer, mailfrom, rcpttos, data):
+        """@brief Do something with the gathered message"""
         inheaders = 1
         lines = data.split('\n')
         print '----------- MESSAGE DATA ------------'  
