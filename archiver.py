@@ -16,8 +16,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
-## \file archiver.py
-## \brief Netfarm Mail Archiver [core]
+## @file archiver.py
+## @brief Netfarm Mail Archiver [core]
 
 __doc__ = '''Netfarm Archiver relase 2.x - Main worker'''
 __version__ = '2.0a1'
@@ -76,6 +76,7 @@ serverPoll = []
 
 ###
 class DEBUGServer:
+    """@brief Debug Server used only for debugging connections"""
     def __init__(self, address, port):
         print 'DEBUGServer: output %s:%s' % (address, port)
 
@@ -93,41 +94,51 @@ input_classes  = { 'lmtp': LMTPServer, 'smtp': SMTPServer }
 output_classes = { 'lmtp': LMTP, 'smtp': SMTP, 'debug': DEBUGServer }
 
 class StorageTypeNotSupported(Exception):
+    """@exception StorageTypeNotSupported The storage type is not supported
+    @brief Exception: The storage type is not supported"""
     pass
 
 class BadStageTypeError(Exception):
+    """@exception BadStageTypeError The Stage type is wrong
+    @brief Exception: The Stage type is wrong"""
     pass
 
 class BadStageInput(Exception):
+    """@exception BadStageInput The Input Stage is wrong
+    @brief Exception: The Input Stage is wrong"""
     pass
 
 class BadStageOutput(Exception):
+    """@exception BadStageOutput The Output Stage is wrong
+    @brief Exception: The Output Stage is wrong"""
     pass
 
 class BadBackendTypeError(Exception):
+    """@exception BadBackendTypeError An error occurred when importing Backend module
+    @brief Exception: An error occurred when importing Backend module"""
     pass
 
 ### Backend interface class
 class BackendBase:
-    """\brief Base Backend Class
+    """@brief BackendBase Class
 
         This class should be derived to make a specialized Backend class"""
     
     def process(self, data):
-        """\brief method to process data
+        """@brief method to process data
 
         should be implemented when subclassing"""
         del data
         return 0, 433, 'Backend not configured'
         
     def shutdown(self):
-        """\brief method to shudown and cleanup the backend
+        """@brief method to shudown and cleanup the backend
 
         should be implemented when subclassing"""
         pass
 
 class DebugBackend(BackendBase):
-    """\brief A fake Backend
+    """@brief A fake Backend
 
     used only to debug the process"""
     def process(self, data):
@@ -138,7 +149,11 @@ class DebugBackend(BackendBase):
                  
 ### Logging
 class Logger:
+    """@brief Message Logger class
+
+    Used to log message to a file"""
     def __init__(self, debug=None):
+        """The constructor"""
         if debug:
             self.log_fd = stdout
         else:

@@ -16,8 +16,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
-## \file backend_filesystem.py
-## \brief Filesystem Storage only Backend
+## @file backend_filesystem.py
+## @brief Filesystem Storage only Backend
 
 __doc__ = '''Netfarm Archiver - release 2.x - Filesystem backend'''
 __version__ = '2.0a1'
@@ -29,11 +29,12 @@ from os import path, access, makedirs, F_OK, R_OK, W_OK
 from time import localtime
 
 class BadStorageDir(Exception):
-    """\brief Exception: Bad Storage directory in config file"""
+    """@exception BadStorageDir Bad Storage directory in config file
+    @brief Exception: Bad Storage directory in config file"""
     pass
 
 class Backend(BackendBase):
-    """\brief Filesystem Backend Class
+    """@brief Filesystem Backend Class
 
     Stores emails on filesystem"""
     def __init__(self, config, stage_type, ar_globals):
@@ -82,5 +83,5 @@ class Backend(BackendBase):
             return 0, 443, '%s: %s' % (t, val)
 
     def shutdown(self):
-        """\brief Backend Shutdown callback"""
+        """@brief Backend Shutdown callback"""
         self.LOG(E_ALWAYS, 'Filesystem Backend (%s): shutting down' % self.type)

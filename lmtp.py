@@ -18,8 +18,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
-## \file lmtp.py
-## \brief lmtp/smtp client/server implementation
+## @file lmtp.py
+## @brief lmtp/smtp client/server implementation
 
 ## TODO 8BITMIME - should work normal way?
 ## Check 7/8bit stuff in headers
@@ -55,13 +55,17 @@ re_feat = re.compile(r"(?P<feature>[A-Za-z0-9][A-Za-z0-9\-]*)")
 
 ### Exceptions
 class UnknownProtocol(Exception):
+    """@exception UnknownProtocol The selected protocol is not implemented
+    @brief Exception: The selected protocol is not implemented"""
     pass
 
 class BadPort(Exception):
+    """@exception BadPort The specified port is invalid
+    @brief Exception: The specified port is invalid"""
     pass
 
 ### Helpers
-# Checking for invalid non 7 bit addresses
+## Checking for invalid non 7 bit addresses
 def check7bit(address):
     try:
         address.encode('ascii')
@@ -74,7 +78,7 @@ def unquote(address, map=SPECIAL):
         address = c.join(address.split(QUOTE+c))
     return address
 
-# validate addresses
+## validate addresses
 def validate(address):
     for i in range(len(address)):
         if address[i] in SPECIAL:

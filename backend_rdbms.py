@@ -16,8 +16,8 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
-## \file backend_rdbms.py
-## \brief RDBMS Storage and Archive Backend
+## @file backend_rdbms.py
+## @brief RDBMS Storage and Archive Backend
 
 __doc__ = '''Netfarm Archiver - release 2.x - Rdbms backend'''
 __version__ = '2.0a1'
@@ -91,12 +91,20 @@ def format_msg(msg):
     return msg
 
 class BadConnectionString(Exception):
+    """@exception BadConnectionString The specified connection string is wrong
+    @brief Exception: The specified connection string is wrong"""
     pass
 
 class ConnectionError(Exception):
+    """@exception ConnectionError An error occurred when connecting to RDBMS
+    @brief Exception: An error occurred when connecting to RDBMS"""
     pass
 
 class Backend(BackendBase):
+    """@brief RDBMS Backend outputs to a relational database
+
+        This backend only supports postgresql for now, it can be used either as
+        Storage either as Archive"""
     def __init__(self, config, stage_type, ar_globals):
         self.config = config
         self.type = stage_type
