@@ -579,7 +579,7 @@ def StageHandler(config, stage_type):
             archiverid = archiverid + NL
             headers = data[:msg.startofbody]
             if msg.get(AID, None):
-                LOG(E_ERR, '%s: Warning overwriting X-Archiver-ID header' % self.type)
+                LOG(E_TRACE, '%s: Warning overwriting X-Archiver-ID header' % self.type)
                 ## Overwrite existing header
                 try:
                     data = re_aid.sub(archiverid, headers, 1).strip() + STARTOFBODY + data[msg.startofbody:]
@@ -595,7 +595,7 @@ def StageHandler(config, stage_type):
 
         def remove_aid(self, data, msg):
             if msg.get(AID, None):
-                LOG(E_ERR, '%s: This mail should not have X-Archiver-ID header, removing it' % self.type)
+                LOG(E_TRACE, '%s: This mail should not have X-Archiver-ID header, removing it' % self.type)
                 try:
                     headers = data[:msg.startofbody]
                     data = re_aid.sub('', headers, 1).strip() + STARTOFBODY + data[msg.startofbody:]
@@ -686,15 +686,18 @@ def StageHandler(config, stage_type):
             m_sub = msg.get('Subject', '')
 
             ## Date extraction
-            m_date = msg.getdate('Date')
-            try:
-                mktime(m_date)
-            except:
-                m_date = None
-                
-            if m_date is None:
-                LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
-                m_date = localtime(time())
+            #m_date = msg.getdate('Date')
+            #try:
+            #    mktime(m_date)
+            #except:
+            #    m_date = None
+            #    
+            #if m_date is None:
+            #    LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
+            #    m_date = localtime(time())
+
+            ## Arrivar date
+            m_date = localtime(time())
             
             m_attach = []
 
