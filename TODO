@@ -43,7 +43,7 @@ TODO 2.x:
 - [done] fix rfc821 syntax (a@host, b: etc + <+Mailbox>)
 - [done] removed all variables named "type" to avoid shadow of type()
 - [done] code/log cleanup, checked with pychecker, lmtp has some harmless warning
-- [done] use cvs for dev
+- [done] use cvs for dev / I was not in src group
 - test LMTP/SMTPServer classes
 - add a E_TRACE with connections
 - add a prefix to logs
