@@ -43,7 +43,7 @@ __version__ = 'Python LMTP Server version 0.1'
 NEWLINE = '\n'
 QUOTE='\\'
 EMPTYSTRING = ''
-SPECIAL='<>()[]," '
+SPECIAL='<>()[]," \''
 LMTP_PORT=2003
 DEBUG=1
 
