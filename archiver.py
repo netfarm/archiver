@@ -29,15 +29,20 @@ __all__ = [ 'BackendBase',
             'E_ERR',
             'E_INFO',
             'E_TRACE',
-            'E_ALWAYS' ]
+            'E_ALWAYS',
+            'platform' ] # import once
 
+from sys import platform
+if platform != 'win32':
+    from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
+    from os import fork, kill, seteuid, setegid, getuid
+    from pwd import getpwnam, getpwuid
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
-from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
 from time import strftime, time, localtime, sleep, mktime
 from sys import argv, exc_info, stdin, stdout, stderr
 from sys import exit as sys_exit
-from os import fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
-from os import close, dup, seteuid, setegid, getuid
+from os import getpid, unlink, chmod, access, F_OK, R_OK
+from os import close, dup
 from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
@@ -49,7 +54,7 @@ from base64 import decodestring
 from threading import Thread, RLock
 from cStringIO import StringIO
 from getopt import getopt
-from pwd import getpwnam, getpwuid
+
 import re
 
 ### Debug levels
@@ -209,6 +214,7 @@ class Logger:
 mime_head = re.compile('=\\?(.*?)\\?(\w)\\?([^? \t\n]+)\\?=', re.IGNORECASE)
 encodings = {'q': mime_decode, 'b': decodestring }
 
+
 def mime_decode_header(line):
     """workaound to python mime_decode_header
 
@@ -331,6 +337,13 @@ def StageHandler(config, stage_type):
             except:
                 self.granularity = GRANULARITY
 
+            ## Win32 Fixups
+            if platform == 'win32':
+                ## No support for poll on win32
+                self.usepoll = 0 
+                ## Bug: hang on close if using psycopg
+                self.setDaemon(1)
+                
             try:
                 self.nowait = config.getint('global', 'nowait')
             except:
@@ -680,7 +693,9 @@ def StageHandler(config, stage_type):
 
             ## If multipart sould be attachment (but not always)
             if msg.maintype != 'multipart':
-                m_attach.append(parse(msg))
+                m_parse = parse(msg)
+                if m_parse is not None:
+                    m_attach.append(m_parse)
             else:
                 file = MultiFile(stream)
                 file.push(msg.getparam('boundary'))
@@ -688,7 +703,7 @@ def StageHandler(config, stage_type):
                     while file.next():
                         submsg = Message(file)
                         subpart = parse(submsg)
-                        if subpart:
+                        if subpart is not None:
                             m_attach.append(subpart)
                 except:
                     LOG(E_ERR, '%s: Error in multipart splitting' % self.type)
@@ -765,15 +780,24 @@ def do_shutdown(res=0):
 
 ## Main       
 if __name__ == '__main__':
+    if platform == 'win32':
+        configfile = 'archiver.ini'
+        arglist = 'dc:'
+    else:
+        configfile='/etc/archiver.conf'
+        arglist = 'dc:u:'
+
     try:
-        optlist, args = getopt(argv[1:], 'dc:u:')
+        optlist, args = getopt(argv[1:], arglist)
         if len(args)>0:
             raise Exception
     except:
-        print 'Usage [%s] [-d] [-c alternate_config] [-u user]' % argv[0]
+        usage = 'Usage [%s] [-d] [-c alternate_config]' % argv[0]
+        if platform != 'win32':
+            usage = usage + ' [-u user]'
+        print usage
         sys_exit(-1)
 
-    configfile='/etc/archiver.conf'
     debug=None
     user=None
     
@@ -788,6 +812,7 @@ if __name__ == '__main__':
             user=arg[1]
             continue
 
+
     if user:
         try:
             userpw = getpwnam(user)
@@ -799,7 +824,7 @@ if __name__ == '__main__':
             print 'Cannot swith to user', user, str(val)
             sys_exit(-2)
     else:
-        user = getpwuid(getuid())[0]
+        if platform != 'win32': user = getpwuid(getuid())[0]
 
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
@@ -832,8 +857,8 @@ if __name__ == '__main__':
         LOG(E_ALWAYS, '[Main] Unable to start Netfarm Archiver, another instance is running')
         do_shutdown(-5)
 
-    ## Daemonize
-    if not debug:
+    ## Daemonize - TODO win32 make it a service
+    if platform != 'win32' and not debug:
         try:
             pid = fork()
         except:
@@ -892,10 +917,11 @@ if __name__ == '__main__':
         do_shutdown(-7)
 
     ## Install Signal handlers
-    LOG(E_TRACE, '[Main] Installing signal handlers')
-    signal(SIGINT,  sig_int_term)
-    signal(SIGTERM, sig_int_term)
-    signal(SIGHUP,  SIG_IGN)
+    if platform != 'win32':
+        LOG(E_TRACE, '[Main] Installing signal handlers')
+        signal(SIGINT,  sig_int_term)
+        signal(SIGTERM, sig_int_term)
+        signal(SIGHUP,  SIG_IGN)
 
     try:
         granularity = config.getint('global', 'granularity')
@@ -903,7 +929,11 @@ if __name__ == '__main__':
         granularity = GRANULARITY
 
     while isRunning:
-        multiplex(serverPoll, 'join', granularity)
+        try:
+            multiplex(serverPoll, 'join', granularity)
+        except KeyboardInterrupt:
+            ## Program Termination on win32
+            sig_int_term(0, 0)
 
     ## Shutdown
     do_shutdown(0)

@@ -2,8 +2,11 @@
 *.pyo
 *.tgz
 *~
+*.bak
 *.eml
 *.flc
 *.tar.gz
 *.log
+*.db
+storage
 doc

@@ -23,6 +23,7 @@ __doc__ = '''Netfarm Archiver - release 2.0.0 - Rdbms backend'''
 __version__ = '2.0.0'
 __all__ = [ 'Backend' ]
 
+## TODO Win32 use different driver??
 driver_map = { 'psql': 'psycopg' }
 
 qs_map = { 'archive':
@@ -127,7 +128,7 @@ class Backend(BackendBase):
         self.process = getattr(self, 'process_' + self.type, None)
         if self.process is None:
             raise StorageTypeNotSupported, self.type
-
+            
         try:
             dsn = config.get(self.type, 'dsn', None)
             driver, username, password, host, dbname = dsn.split(':')
@@ -157,17 +158,17 @@ class Backend(BackendBase):
 
    
     def close(self):
-        """closes the cursor and the connection"""
-        if self.cursor:
+        """closes the cursor and the connection"""      
+        if self.cursor is not None:
             try:
                 self.cursor.close()
             except: pass
-            self.cursor = None
-        if self.connection:
+            del self.cursor
+        if self.connection is not None:
             try:
                 self.connection.close()
             except: pass
-            self.connection = None
+            del self.connection
 
     def connect(self):
         """make a connection to rdbms
@@ -185,9 +186,10 @@ class Backend(BackendBase):
             raise ConnectionError, msg
             
         try:
-            self.connection.autocommit(1)
+            #self.connection.autocommit(1)
+            self.connection.set_isolation_level(0)
         except:
-            self.LOG(E_TRACE, 'Rdbms Backend: driver has not autocommit facility')
+            self.LOG(E_TRACE, 'Rdbms Backend: driver has not isolation_level facility')
         self.cursor = self.connection.cursor()
         self.LOG(E_TRACE, 'Rdbms Backend: I\'ve got a cursor from the driver')
 

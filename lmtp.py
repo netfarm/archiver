@@ -26,12 +26,14 @@
 ## TODO: does PIPELINING is server "transparent"?
 ## TODO: Add PureProxy as in smtpd.py ??
 
+from sys import platform
+if platform != 'win32':
+    from socket import AF_UNIX
 from asynchat import async_chat, fifo
 from asyncore import loop,dispatcher
 from asyncore import close_all as asyn_close_all
-from fcntl import fcntl, F_SETFD, FD_CLOEXEC
 from socket import gethostbyaddr, gethostbyname, gethostname
-from socket import socket, AF_UNIX, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM
 from smtplib import SMTP, SMTPConnectError, SMTPServerDisconnected
 from smtpd import SMTPChannel as smtpd_SMTPChannel
 from sys import argv
@@ -161,7 +163,7 @@ class LMTP(SMTP):
 
     this class hacks smtplib's SMTP class into a shape where it will
     successfully pass a message off to Cyrus's LMTP daemon.
-    Also adds support for connecting to a unix domain socket."""
+    Also adds support for connecting to a unix domain socket (unix platform only)."""
     
     lhlo_resp = None
     def __init__(self, host='', port=0):
@@ -181,6 +183,8 @@ class LMTP(SMTP):
         is assumed to be a unix domain socket.
         """
         if host[:5] == 'unix:':
+            if platform == 'win32':
+                raise Exception, 'Cannot use unix sockets on win32 platform'
             host = host[5:]
             self.sock = socket(AF_UNIX, SOCK_STREAM)
             if self.debuglevel > 0: print 'connect:', host
@@ -416,6 +420,8 @@ class LMTPServer(dispatcher):
         
         ### UNIX
         if proto == 'unix':
+            if platform == 'win32':
+                raise Exception, 'Cannot use unix sockets on win32 platform'
             try:
                 unlink(params)
             except:

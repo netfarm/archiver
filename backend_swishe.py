@@ -24,6 +24,8 @@ __version__ = '2.0.0'
 __all__ = [ 'Backend' ]
 
 from archiver import *
+if platform == 'win32':
+    raise StorageTypeNotSupported, 'Swish-e backend not yet supported on win32'
 from backend_filesystem import Backend as Backend_filesystem
 from sys import exc_info
 from os import path, symlink, access, F_OK, R_OK, W_OK

@@ -74,7 +74,7 @@ class Backend(BackendBase):
                 return 0, 443, '%s: %s' % (t, val)
             
         try:
-            fd = open(filename, 'w')
+            fd = open(filename, 'wb')
             fd.write(data['mail'])
             fd.flush()
             fd.close()

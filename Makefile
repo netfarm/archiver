@@ -10,7 +10,7 @@ all: $(DIST)
 compile:
 	python /usr/lib/python$(PYTHON_VERSION)/compileall.py .	
 clean:
-	rm -f *~ *.pyc *.pyo *.flc $(DIST)
+	rm -f *~ *.pyc *.pyo *.flc *.bak $(DIST)
 
 cleandoc:
 	rm -fr doc api *.log

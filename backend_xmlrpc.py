@@ -18,15 +18,19 @@
 # ======================================================================
 ## @file backend_xmlrpc.py
 ## XMLrpc Storage and Archive Backend
-
+## TODO tcp connection remain active
 __doc__ = '''Netfarm Archiver - release 2.0.0 - XmlRpc backend'''
 __version__ = '2.0.0'
 __all__ = [ 'Backend' ]
 
 from archiver import *
 from sys import exc_info
-from xmlrpc import client, fault, setLogLevel, setLogger
+try:
+    from xmlrpc import client, fault, setLogLevel, setLogger
+except:
+    raise Exception, 'Import error you may need pyxmlrc from http://sourceforge.net/projects/py-xmlrpc'
 from urlparse import urlparse
+from time import mktime
 
 ##
 class BadUrlSyntax(Exception):
@@ -86,6 +90,9 @@ class Backend(BackendBase):
         """Archive backend proces
         @param data: The data argument is a dict containing mail info and the mail itself
         @return: year as status and pid as code"""
+        ## Fixup Date - xmlrpc cannot encode time.struct_time objects
+        data['m_date'] = mktime(data['m_date'])
+        self.LOG(E_TRACE, 'XmlRpc Backend (%s): ready to process %s' % (self.type, data))
         try:
             status, code = self.client.execute(self.url, [data], -1.0, self.username, self.password)
             return status, code, 'Ok'
