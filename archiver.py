@@ -31,8 +31,9 @@ __all__ = [ 'BackendBase',
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from signal import signal,SIGTERM,SIGINT,SIGHUP, SIG_IGN
 from time import strftime, time, mktime, localtime, sleep
-from sys import exit, exc_info, stdout, stderr
-from os import getpid, kill, unlink, chmod
+from sys import argv, exit, exc_info, stdout, stderr
+from os import dup2, fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
+from os import seteuid, setegid
 from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
@@ -43,6 +44,8 @@ from mimify import mime_decode
 from base64 import decodestring
 from threading import Thread, RLock
 from cStringIO import StringIO
+from getopt import getopt
+from pwd import getpwnam
 import re
 
 ### Debug levels
@@ -315,7 +318,7 @@ def StageHandler(config, stage_type):
             except ImportError:
                 t, val, tb = exc_info()
                 del tb
-                LOG(E_ERR, '%s: Cannot import backend: ' + str(val))
+                LOG(E_ERR, '%s: Cannot import backend: %s' % (self.type, str(val)))
                 raise BadBackendTypeError, str(val)
 
             self.backend = backend(self.config, stage_type, globals())
@@ -648,10 +651,48 @@ def do_shutdown(res=0):
 
 ### Main       
 if __name__ == '__main__':
-    config = ConfigParser()
-    config.read('/etc/archiver.conf')
+    try:
+        optlist, args = getopt(argv[1:], 'dc:u:')
+        if len(args)>0:
+            raise Exception
+    except:
+        print 'Usage [%s] [-d] [-c alternate_config] [-u user]'
+        exit(-1)
 
-    LOG = Logger(debug=None)
+    configfile='/etc/archiver.conf'
+    debug=None
+    user=None
+    
+    for arg in optlist:
+        if arg[0] == '-c':
+            configfile = arg[1]
+            continue
+        if arg[0] == '-d':
+            debug=1
+            continue
+        if arg[0] == '-u':
+            user=arg[1]
+            continue
+
+    if user:
+        try:
+            userpw = getpwnam(user)
+            setegid(userpw[3])
+            seteuid(userpw[2])
+        except:
+            t, val, tb = exc_info()
+            del t
+            print 'Cannot swith to user', user, str(val)
+            exit(-1)
+
+    if not access(configfile, F_OK | R_OK):
+        print 'Cannot read configuration file', configfile
+        exit(-1)
+
+    config = ConfigParser()
+    config.read(configfile)
+
+    LOG = Logger(debug=debug)
     try:
         pidfile = config.get('global', 'pidfile')
     except:
@@ -676,6 +717,22 @@ if __name__ == '__main__':
         LOG(E_ERR, '[Main] Unable to start Netfarm Archiver, another instance is running')
         exit(-1)
 
+    ### Daemonize
+    if not debug:
+        try:
+            pid = fork()
+        except:
+            t, val, tb = exc_info()
+            del t                           
+            print 'Cannot go in background mode', str(val)
+
+        ### TODO 2.x needed? remove also dup2 from import
+        #null = open('/dev/null')
+        #dup2(0, null.fileno())
+        #dup2(0, null.fileno())
+        #dup2(0, null.fileno())
+        if pid: exit(0)
+
     ### Save my process id to file
     try:
         open(pidfile,'w').write(str(getpid()))
@@ -698,7 +755,10 @@ if __name__ == '__main__':
         pass
 
     ### Starting up
-        
+
+    if user:
+        LOG(E_INFO, '[Main] Running as user %s' % user)
+    
     ### Creating stage sockets
     ### Archive stage
     sections = config.sections()
@@ -723,7 +783,7 @@ if __name__ == '__main__':
         granularity = config.getint('global', 'granularity')
     except:
         granularity = 30
-    
+
     while isRunning:
         ### Wait child threads
         multiplex(serverPoll, 'join', granularity)
