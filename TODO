@@ -72,3 +72,4 @@ TODO 2.x:
 - Update structure.txt: stage to stage passthrough - maybe usefull on win32 
 - Add to readme docs about possible problems with bugged rfc822 python2.1 module
 - Consider to converting doc to epydoc, it's better than doxygen with python since it's native
+- Check set_isolation on pyscopg, it doesn't exists on some versions
