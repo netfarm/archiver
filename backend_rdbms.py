@@ -71,7 +71,13 @@ from sys import exc_info
 from time import asctime
 from base64 import encodestring
 
+##
 def sql_quote(v):
+    """@brief sql_quote
+
+    quotes special chars and removes NULL chars
+    @param v is the text that should be quoted
+    @return quoted string"""
     quote_list = [ '\'', '"', '\\' ]
     res = ''
     # Remove NULL - very bad mails
@@ -83,6 +89,11 @@ def sql_quote(v):
     return res
 
 def format_msg(msg):
+    """@brief Formats an error message from rdbms backend
+
+    removes tabs and replaces cr with commas, also trims the msg to 256 chars
+    @param msg is the original object for error message
+    @return formatted message"""
     msg = str(msg)
     if len(msg)>256:
         msg = msg[:256] + '...(message too long)'
@@ -106,6 +117,9 @@ class Backend(BackendBase):
         This backend only supports postgresql for now, it can be used either as
         Storage either as Archive"""
     def __init__(self, config, stage_type, ar_globals):
+        """@brief The constructor
+
+        Initialize a connection to a rdbms"""
         self.config = config
         self.type = stage_type
         self.query = qs_map.get(self.type, None)
@@ -145,6 +159,7 @@ class Backend(BackendBase):
 
    
     def close(self):
+        """@brief closes the cursor and the connection"""
         if self.cursor:
             try:
                 self.cursor.close()
@@ -157,11 +172,14 @@ class Backend(BackendBase):
             self.connection = None
 
     def connect(self):
+        """@brief make a connection to rdbms
+
+        raises ConnectionError if fails"""
         self.close()
         try:
             self.connection = self.db_connect(self.dsn)
         except:
-            ### We can work without the db connection and call it when needed
+            ## We can work without the db connection and call it when needed
             t, val, tb = exc_info()
             del tb
             msg = format_msg(val)
@@ -177,7 +195,13 @@ class Backend(BackendBase):
 
 
     def do_query(self, qs, fetch=None):
-        ### Query -> reconnection -> Query
+        """@brief execute a query
+
+        Query -> reconnection -> Query
+        @param qs the query string
+        @param fetch is defined then the query must return a result
+        @return @a year, @a pid, @a message, if @a year is 0 an error is occured,
+        @a pid has the code, @a message contains a more detailed explanation"""
         try:
             self.cursor.execute(qs)
             if fetch:
@@ -204,6 +228,12 @@ class Backend(BackendBase):
                 return 0, 443, '%s: Internal Server Error' % t
 
     def process_archive(self, data):
+        """@brief process data from archiver main process
+
+        Creates a query by using data passed by the main archiver process
+        @param data is a dict containing all needed stuff
+        @return the result of do_query"""
+        
         qs = ''
         nattach = len(data['m_attach'])
         subject = sql_quote(mime_decode_header(data['m_sub'])[:252])
@@ -238,6 +268,11 @@ class Backend(BackendBase):
         return self.do_query(qs, fetch=1)
     
     def process_storage(self, data):
+        """@brief process storaging of mail on a rdbms
+
+        The query doesn't return rows but only result code
+        @param data is a dict containg @a year, @a pid and @a mail from archiver
+        @return result code"""
         msg = { 'year': data['year'],
                 'pid' : data['pid'],
                 'mail': encodestring(data['mail'])
@@ -246,5 +281,8 @@ class Backend(BackendBase):
         return self.do_query(self.query[0] % msg)
         
     def shutdown(self):
+        """@brief shutdown the rdbms stage
+
+        closes the rdbms connection and the stage Thread"""
         self.close()
         self.LOG(E_ALWAYS, 'Rdbms Backend (%s): closing connection' % self.type)

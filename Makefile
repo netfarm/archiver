@@ -10,13 +10,17 @@ clean:
 	rm -f *~ *.pyc *.pyo *.flc $(DIST)
 
 cleandoc:
-	rm -fr doc
+	rm -fr doc *.log
 
 pycheck:
-	pychecker *.py
+	pychecker backend_*.py archiver.py lmtp.py
 
 doxygen:
-	doxygen doxygen.cfg
+	@echo doxygen-ing...
+	@doxygen doxygen.cfg 2>&1 | grep -v "param is not found in the argument list"
+
+doxy:
+	make doxygen >doxy.log && less doxy.log
 
 
 $(DIST): $(ALL) $(TEST)

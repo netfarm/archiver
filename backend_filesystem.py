@@ -28,6 +28,7 @@ from sys import exc_info
 from os import path, access, makedirs, F_OK, R_OK, W_OK
 from time import localtime
 
+##
 class BadStorageDir(Exception):
     """@exception BadStorageDir Bad Storage directory in config file
     @brief Exception: Bad Storage directory in config file"""
@@ -53,11 +54,11 @@ class Backend(BackendBase):
         self.LOG(E_ALWAYS, 'Filesystem Backend (%s) at %s ' % (self.type, self.storagedir))
         del ar_globals
                 
-    ### Storage on filesystem
+    ## Storage on filesystem
     def process(self, data):
         month = data['date'][1]
 
-        ### First check integrity
+        ## First check integrity
         mailpath = path.join(self.storagedir, str(data['year']), str(month))
         if not access(mailpath, F_OK | R_OK | W_OK):
             try:

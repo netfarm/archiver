@@ -5,4 +5,5 @@
 *.eml
 *.flc
 *.tar.gz
+*.log
 doc

@@ -63,3 +63,4 @@ TODO 2.x:
 - unmimify attachment filenames
 - [partially done - null chars are stripped] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
 - unmimify email addresses??
+- Doxygen-ize

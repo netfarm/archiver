@@ -28,12 +28,13 @@ from sys import exc_info
 from xmlrpc import client, fault, setLogLevel, setLogger
 from urlparse import urlparse
 
+##
 class BadUrlSyntax(Exception):
     """@exception BadUrlSyntax Bad url syntax in config file
     @brief Exception: Bad url syntax in config file"""
     pass
 
-### TODO 2.x this method is 100% ok??
+## TODO 2.x this method is 100% ok??
 def decode_url(url):
     """@brief Parses url from config file
     @param url is like http://username:password@host:8080/InsertMail/insert
