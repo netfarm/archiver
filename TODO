@@ -1,0 +1,59 @@
+BUGS
+- not 7bit header mail are trashed (it should be ok since, they aren't rfc compliant)
+- bcc mails (no recipients) are trashed - possible fix: postfix 2 can add:
+  Delivered-To: header with envelope address
+
+TODO 1.x:
+- Modularize and make backend/frontend
+- Rewrite of do_exit and/or implement lmtp protocol, so I can bounce back mails
+- Find a better solution for non-7bit headers mails (but not rfc compliant)?
+- Check report_admin mail with attachments
+- Add command line opts to log on stderr
+- Check rfc822 parsing (exp error handling)
+- INI file instead of python import? This can make archiver handle reload
+- Performance optimizations, and remove some uneeded log
+
+TODO 2.x:
+- [done] Split out history and readme from archver.py and make different files 
+- [done] Split the server to two threads 1st and 2nd stage using different unix sockets
+- [done] Use lmtp on listening unix sockets
+- [done] Modularize Data and Storage Backends
+- [done] Call init/shutdown for each backend
+- [done] Check duplicate headers - check
+         clamav sends mails with multiple cc
+         http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=213509&mbox=yes
+- [done need tests] Use lmtp or smtp for listening services (integrates with amavisd-new)
+- [done need backend support] Fix multiple from stuff
+- [almost done] rework configurations system - use ConfigParses instead of import?
+- [xmlrpc backend with python-xmlrpc is almost done] Implement backends (fixme: set timeout - config?)
+- [done] Make a class object for logger
+- [done] Move common backend exceptions class in archiver.py and import
+- [done] sql tables are in dir sql/ - postfix confs are in dir postfix/
+- [done] Add error handling and auto-reconnection to backend rdbms
+- [done] Add 'Archived as' as 200 result code??
+- [done] lmtp.py LMTP_PORT not defined
+- [done need test] inter thread locking stuff, move the lock in LMTP/SMTPChannel??
+- [done config has usepoll and granularity] use_poll in config
+- [done] Added nowait to global for debugging locks
+- [done using an hash] failed to connect output server -> mail is archived pid is lost
+- [done need test] address check is not 100% correct
+- [done] make separate hashdb for each backend
+- [done] add support for @mail.coral.com.cu:giovanni.sumberaz@sisam.it
+- [done] unix sockets should be 777??? -> 0777
+- [done] fix rfc821 syntax (a@host, b: etc + <+Mailbox>)
+- [done] removed all variables named "type" to avoid shadow of type()
+- [done] code/log cleanup, checked with pychecker, lmtp has some harmless warning
+- test LMTP/SMTPServer classes
+- add a E_TRACE with connections
+- add a prefix to logs
+- Make daemon - switch user? - getopt cmdline args
+- Make templates for mails - needed ?
+- Make README.txt
+- Use "binary cursor" for rdbms storage?
+- Storage sql table needs to be rewritten (indexes, unique, etc)
+- sendmail method need extensive checks
+- fix loglevel/debuglevel in lmtp.py
+- fix lock/unlock uffa
+- remake init.d, maybe in python like zopectl
+- add timeout to connections
+- null return path mails should be in whitelist? - what returns rfc822.parseaddr?

@@ -1,0 +1,36 @@
+Netfarm Mail Archiver - Structure for version 2.0
+
+
+                    +--------------------+                   +--------------------+
+      smtpd      -> | Archiver 1st stage | ->    smtpd    -> | Archiver 2nd stage | ->        smtpd
+(content-filter1)   +---------+----------+ (content-filter2) +---------+----------+    (email delivering)
+                              |                                        |
+                              |                                        |
+                    +---------+----------+                   +---------+----------+
+                    |      Archive       |                   |       Storage      |
+                    +---------+----------+                   +---------+----------+
+                              |                                        | 
+                              |                                        |
+                    +---------+----------+                   +---------+----------+
+                    |  Archive Backend   |                   |  Storage Backend   |
+                    +--------------------+                   +--------------------+
+
+
+
+- smtpd 1st instance -> archiver 1st stage via content-filter1 using lmtp
+.
+- archiver 1st stage -> smtpd 2nd instance via smtp/lmtp (content-filter2)
+.
+- smtpd 2nd instance -> archiver 2nd stage via transport using lmtp
+.
+- archiver 2nd stage -> email delivering using smtp/lmtp to smtpd 3rd instance
+
+
+Archive Backends:
+  - xmlrpc
+  - direct rdbms
+
+Storage Backends:
+  - xmlrpc
+  - direct rdbms
+  - filesystem

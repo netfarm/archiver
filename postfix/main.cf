@@ -1,0 +1,6 @@
+content_filter = lmtp:unix:/var/lib/archiver/lmtp_archive
+mailbox_transport = lmtp:unix:/var/run/cyrus/socket/lmtp
+
+# UCE
+strict_rfc821_envelopes = yes
+strict_7bit_headers = yes
