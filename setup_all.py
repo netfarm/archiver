@@ -21,7 +21,6 @@
 
 import sys, os, glob
 sys.path.append('.')
-sys.path.append('nma')
 
 try:
     import modulefinder
@@ -55,7 +54,7 @@ archiver = dict(
     copyright = 'Copyright (C) 2004 Gianluigi Tiesi',
     comments = 'Netfarm Mail Archiver',
     icon_resources = [(1, "nma.ico")],
-    script = 'nma/archiver.py'
+    script = 'archiver.py'
 )
 
 if len(sys.argv)==1 or \

@@ -32,6 +32,7 @@ from sys import exc_info, path
 from win32api import RegOpenKey, RegQueryValueEx, RegCloseKey, ExpandEnvironmentStrings
 from win32con import HKEY_LOCAL_MACHINE
 
+##
 class NetfarmArchiverService(ServiceFramework):
     """ A class representing a Windows NT service """
 
@@ -39,6 +40,7 @@ class NetfarmArchiverService(ServiceFramework):
     _svc_display_name_ = r'Netfarm Mail Archiver'
 
     def __init__(self, args):
+        """ Costructor for The NtService class """
         ServiceFramework.__init__(self, args)
         
         ## Read Configuration
@@ -51,16 +53,17 @@ class NetfarmArchiverService(ServiceFramework):
         ## Append App path to python path
         path.append(ExpandEnvironmentStrings(value))
         
-        ## import needed stuff
-        from nma.archiver import ServiceStartup, sig_int_term
+        from archiver import ServiceStartup, sig_int_term
         self.ServiceStartup = ServiceStartup
         self.ServiceStop = sig_int_term
 
     def SvcStop(self):
+        """ Stops NtService """
         self.ReportServiceStatus(SERVICE_STOP_PENDING)
         self.ServiceStop(0, 0)
 
-    def SvcDoRun(self):      
+    def SvcDoRun(self):
+        """ Starts NtService """
         LogMsg(EVENTLOG_INFORMATION_TYPE, PYS_SERVICE_STARTED, (self._svc_name_, ' (%s)' % self._svc_display_name_))
         res = 0
         try:

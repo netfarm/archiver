@@ -85,6 +85,8 @@ Section
   SetOutPath "$INSTDIR"   
   File "dist\*.*"
   File /oname=archiver.ini archiver-win32.ini
+  File /oname=NMA-epydoc.pdf api\api.pdf
+  File /oname=NMA-doxy.pdf doc\latex\refman.pdf
   
   ; Store installation folder
   WriteRegStr HKLM "Software\Netfarm\Netfarm Mail Archiver" "ConfigFile" $INSTDIR\archiver.ini
@@ -113,6 +115,8 @@ Section
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
   CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Netfarm Mail Archiver - Console.lnk" "$INSTDIR\archiver.exe" -d
+  CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Netfarm Mail Archiver - Doxygen.lnk" "$INSTDIR\NMA-doxy.pdf"
+  CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Netfarm Mail Archiver - Epydoc.lnk" "$INSTDIR\NMA-epydoc.pdf"
   CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   !insertmacro MUI_STARTMENU_WRITE_END
 SectionEnd
@@ -130,6 +134,8 @@ Section "Uninstall"
   !insertmacro MUI_STARTMENU_GETFOLDER Application $MUI_TEMP
 
   Delete "$SMPROGRAMS\$MUI_TEMP\Netfarm Mail Archiver - Console.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\Netfarm Mail Archiver - Doxygen.lnk"
+  Delete "$SMPROGRAMS\$MUI_TEMP\Netfarm Mail Archiver - Epydoc.lnk"
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
   
   ; Delete empty start menu parent diretories

@@ -70,6 +70,7 @@ DEBUGLEVELS = { 'none'  : E_NONE,
                 'info'  : E_INFO,
                 'trace' : E_TRACE,
                 'always': E_ALWAYS }
+
 ### Usefull constants
 NL='\n'
 AID='X-Archiver-ID'
@@ -86,6 +87,7 @@ isRunning = 0
 main_svc = 0
 serverPoll = []
 ##
+
 class DEBUGServer:
     """Debug Server used only for debugging connections"""
     def __init__(self, address, port):
@@ -789,6 +791,7 @@ def do_shutdown(res=0):
 
 ## Specific Startup on unix
 def unix_startup(config, user=None):
+    """ Unix specific startup actions """
     global LOG        
     if user:
         try:
@@ -858,10 +861,12 @@ def unix_startup(config, user=None):
 
 ## Specific Startup on win32
 def win32_startup(config, user=None):
+    """ Win32 specific startup actions"""
     return 'Windows User', GetCurrentProcessId()
 
-## Start the Archiver Service    
+## Start the Archiver Service
 def ServiceStartup(configfile, user=None, debug=None, service_main=0):
+    """ Archiver Service Main """
     global LOG, config, isRunning, main_svc
     main_svc = service_main
     if not access(configfile, F_OK | R_OK):
