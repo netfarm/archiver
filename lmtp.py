@@ -122,7 +122,7 @@ def getaddr(keyword, arg):
     address = validate(res[0])
 
     ### Invalid address
-    if not address:
+    if address is None:
         return None, 'Bad quoted sequence'
 
     ### Uh we have also a domain
@@ -326,7 +326,7 @@ class LMTPChannel(async_chat):
 
     def lmtp_MAIL(self, arg):
         address, options = self.__getaddr('FROM:', arg)
-        if not address:
+        if address is None:
             self.push('500 5.5.2 Syntax: MAIL FROM:<address> [ SP <mail-parameters> ]')
             return
         if self.__mailfrom:
@@ -486,10 +486,10 @@ class SMTPChannel(smtpd_SMTPChannel):
         
     def smtp_MAIL(self, arg):
         address, options = self.__getaddr('FROM:', arg)
-        if not address:
+        if address is None:
             self.push('500 5.5.2 Syntax: MAIL FROM:<address> [ SP <mail-parameters> ]')
             return
-        if self.__mailfrom:
+        if self.__mailfrom is not None:
             self.push('503 5.5.1 Error: nested MAIL command')
             return
         self.__mailfrom = address
@@ -500,7 +500,7 @@ class SMTPChannel(smtpd_SMTPChannel):
             self.push('250 2.0.0 Ok')
 
     def smtp_RCPT(self, arg):
-        if not self.__mailfrom:
+        if self.__mailfrom is None:
             self.push('503 5.5.1 Error: need MAIL command')
             return
         address, options = self.__getaddr('TO:', arg)

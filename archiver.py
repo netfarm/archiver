@@ -59,6 +59,7 @@ DEBUGLEVELS = { 'none' : E_NONE,
                 'trace': E_TRACE }
 ### Usefull constants
 NL='\n'
+AID='X-Archiver-ID'
 STARTOFBODY=NL+NL
 GRANULARITY=10
 BACKEND_OK = (1, 200, 'Ok')
@@ -336,7 +337,6 @@ def StageHandler(config, stage_type):
         def accept_hook(self):
             LOG(E_TRACE, '%s: I got a connection: Acquiring lock' % self.type)
             self.lock.acquire()
-            LOG.flush()
             return self._handle_accept()
 
         def finish(self, force=0):
@@ -378,13 +378,16 @@ def StageHandler(config, stage_type):
                 server.close()
             except: pass
 
-            ### Send ok
+            ### We can get None, a dict or an integer
+            if type(server_reply) == type(0):
+                server_reply = str(server_reply)
+                
             if len(server_reply) == 0:
                 okmsg = 'Sendmail Ok'
                 if aid:
                     okmsg = 'Archived as: ' + aid
 
-                if mid and self.hashdb.has_key(mid):
+                if mid is not None and self.hashdb.has_key(mid):
                     LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
                     del self.hashdb[mid]
                     self.hashdb.sync()
@@ -395,9 +398,13 @@ def StageHandler(config, stage_type):
                     for rcpt in server_reply.keys():
                         res = server_reply[rcpt]
                         LOG(E_ERR, '%s-sendmail error: %s - %s' % (self.type, res[0], res[1]))
+                elif type(server_reply)==type(''):
+                    LOG(E_ERR, '%s-sendmail reply error, server redurned error code %s' % (self.type, server_reply))
+                    return self.do_exit(443, 'Server return code is ' + server_reply)
                 else:
                     LOG(E_ERR, '%s-sendmail unknown error: %s' % (self.type, str(server_reply)))
-
+                    return self.do_exit(443, 'Internal error')
+                
                 ### TODO 2.x - find the right way
                 if len(server_reply) == len(m_to):
                     return self.do_exit(443, 'All recipients were rejected by the mailserver')
@@ -418,7 +425,7 @@ def StageHandler(config, stage_type):
             
             stream = StringIO(data)
             msg = Message(stream)
-            aid = msg.get('X-Archiver-ID', None)
+            aid = msg.get(AID, None)
 
             ### Check if I have msgid in my cache
             mid = msg.get('message-id', '')
@@ -467,45 +474,57 @@ def StageHandler(config, stage_type):
             return self.sendmail(sender, recips, data, aid, mid)
 
         def add_aid(self, data, msg, aid):
-            archiverid = 'X-Archiver-ID: %s' % aid
+            archiverid = '%s: %s' % (AID, aid)
             LOG(E_INFO, '%s: %s' % (self.type, archiverid))
             headers = data[:msg.startofbody]
-            if msg.get('X-Archiver-ID', None):
-                LOG(E_ERR, '%s: Warning overwriting archiver id header' % self.type)
+            if msg.get(AID, None):
+                LOG(E_ERR, '%s: Warning overwriting X-Archiver-ID header' % self.type)
                 ### Overwrite existing header
                 try:
                     data = re_aid.sub(archiverid, headers, 1).strip() + STARTOFBODY + data[msg.startofbody:]
                 except:
                     t, val, tb = exc_info()
                     del tb
-                    LOG(E_ERR, '%: Error overwrting archiver id header: %s' % (self.type, str(val)))
+                    LOG(E_ERR, '%: Error overwrting X-Archiver-ID header: %s' % (self.type, str(val)))
                     return None
             else:
                 data = headers.strip() + NL + archiverid + STARTOFBODY + data[msg.startofbody:]
 
             return data
 
-        ### TODO 2.x implement
         def remove_aid(self, data, msg):
+            if msg.get(AID, None):
+                LOG(E_ERR, '%s: This mail should not have X-Archiver-ID header, removing it' % self.type)
+                try:
+                    headers = data[:msg.startofbody]
+                    data = re_aid.sub('', headers, 1).strip() + STARTOFBODY + data[msg.startofbody:]
+                except:
+                    t, val, tb = exc_info()
+                    del tb
+                    LOG(E_ERR, '%s: Error removing X-Archiver-ID header: %s' % (self.type, str(val)))
             return data
         
         def process_archive(self, peer, sender, recips, data):
             global quotatbl
             global whitelist
 
-            LOG(E_INFO, '%s: Sender is %s - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
+            LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
             
             size = len(data)
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
-            
+
             stream = StringIO(data)
             msg = Message(stream)
 
+            if sender == '':
+                LOG(E_INFO, '%s: Null return path mail, not archived' % (self.type))
+                return self.sendmail('<>', recips, self.remove_aid(data, msg))
+
             ### Check if I have msgid in my cache
-            mid = msg.get('message-id', '')
-            LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
-            if self.hashdb.has_key(mid):
+            mid = msg.get('message-id', None)
+            if mid is not None and self.hashdb.has_key(mid):
+                LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
                 aid=self.hashdb[mid]
                 LOG(E_ERR, '%s: Message has yet assigned year/pid pair, only adding header' % self.type)
                 return self.sendmail(sender, recips, self.add_aid(data, msg, aid), aid, mid)
@@ -527,11 +546,7 @@ def StageHandler(config, stage_type):
             except:
                 LOG(E_ERR, '%s: cannot parse %s' % (self.type, sender))
                 check_sender = []
-
-            if len(check_sender) and check_sender[0]=='':
-                LOG(E_INFO, '%s: Null return path mail, not archived' % (self.type))
-                return self.sendmail(sender, recips, self.remove_aid(data, msg))
-            
+                            
             for addr in m_from+m_to+check_sender:
                 try:
                     base = addr[1].split('@')[0]
@@ -609,9 +624,10 @@ def StageHandler(config, stage_type):
             ### Adding X-Archiver-ID: header
             aid = '%d-%d' % (year, pid)
             data = self.add_aid(data, msg, aid)
-            LOG(E_TRACE, '%s: inserting %s msg in hashdb' % (self.type, aid))
-            self.hashdb[mid]=aid
-            self.hashdb.sync()
+            if mid is not None:
+                LOG(E_TRACE, '%s: inserting %s msg in hashdb' % (self.type, aid))
+                self.hashdb[mid]=aid
+                self.hashdb.sync()
             ### Next hop
             LOG(E_TRACE, '%s: backend worked fine' % self.type)
             LOG(E_TRACE, '%s: passing data to nexthop: %s:%s' % (self.type, self.output_address, self.output_port))
