@@ -32,7 +32,7 @@ from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from signal import signal,SIGTERM,SIGINT,SIGHUP, SIG_IGN
 from time import strftime, time, mktime, localtime, sleep
 from sys import argv, exit, exc_info, stdout, stderr
-from os import dup2, fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
+from os import fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
 from os import seteuid, setegid
 from anydbm import open as opendb
 from mimetools import Message
@@ -60,9 +60,9 @@ DEBUGLEVELS = { 'none' : E_NONE,
 ### Usefull constants
 NL='\n'
 STARTOFBODY=NL+NL
-
+GRANULARITY=10
 BACKEND_OK = (1, 200, 'Ok')
-
+MINSIZE=8
 quotatbl = None
 isRunning = 0
 serverPoll = []
@@ -107,10 +107,6 @@ class BackendBase:
         return 0, 433, 'Backend not configured'
         
     def shutdown(self):
-        pass
-
-    ### TODO 2.x Implement?
-    def reload(self):
         pass
 
 class DebugBackend(BackendBase):
@@ -274,7 +270,7 @@ def StageHandler(config, stage_type):
             try:
                 self.granularity = config.getint('global', 'granularity')
             except:
-                self.granularity = 30
+                self.granularity = GRANULARITY
 
             try:
                 self.nowait = config.getint('global', 'nowait')
@@ -395,8 +391,11 @@ def StageHandler(config, stage_type):
                 else:
                     LOG(E_ERR, '%s-sendmail unknown error: %s' % (self.type, str(server_reply)))
 
-                ### TODO 2.x return as ok and bounce?
-                return self.do_exit(443, 'Error delivering mail to some of recipients')
+                ### TODO 2.x - find the right way
+                if len(server_reply) == len(m_to):
+                    return self.do_exit(443, 'All recipients were rejected by the mailserver')
+
+                return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
 
         def do_exit(self, code, msg='', extcode=None):
             self.del_channel()
@@ -406,11 +405,10 @@ def StageHandler(config, stage_type):
             return ' '.join([str(code), excode, msg])
 
         def process_storage(self, peer, sender, recips, data):
-            ### Null mail (really should not)
-            if len(data) < 1:
-                LOG(E_ERR, '%s: Empty Mail' % self.type)
-                return self.do_exit(550, 'Empty mail')
-
+            size = len(data)
+            if size < MINSIZE:
+                return self.do_exit(550, 'Invalid Mail')
+            
             stream = StringIO(data)
             msg = Message(stream)
             aid = msg.get('X-Archiver-ID', None)
@@ -479,19 +477,21 @@ def StageHandler(config, stage_type):
                 data = headers.strip() + NL + archiverid + STARTOFBODY + data[msg.startofbody:]
 
             return data
+
+        ### TODO 2.x implement
+        def remove_aid(self, data, msg):
+            return data
         
         def process_archive(self, peer, sender, recips, data):
             global quotatbl
             global whitelist
 
             LOG(E_INFO, '%s: Sender is %s - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
-
-            ### Null mail (really should not)
-            if len(data) < 1:
-                LOG(E_ERR, '%s: Empty Mail' % self.type)
-                return self.do_exit(550, 'Empty mail')
-
+            
             size = len(data)
+            if size < MINSIZE:
+                return self.do_exit(550, 'Invalid Mail')
+            
             stream = StringIO(data)
             msg = Message(stream)
 
@@ -521,6 +521,10 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s: cannot parse %s' % (self.type, sender))
                 check_sender = []
 
+            if len(check_sender) and check_sender[0]=='':
+                LOG(E_INFO, '%s: Null return path mail, not archived' % (self.type))
+                return self.sendmail(sender, recips, self.remove_aid(data, msg))
+            
             for addr in m_from+m_to+check_sender:
                 try:
                     base = addr[1].split('@')[0]
@@ -528,8 +532,8 @@ def StageHandler(config, stage_type):
                     base = addr
                 LOG(E_TRACE, 'whitelist check: %s' % base)
                 if base in whitelist:
-                    LOG(E_INFO, '%s: Mail to: %s in whitelist, not archiving' % (self.type, base))
-                    return self.sendmail(sender, recips, data)
+                    LOG(E_INFO, '%s: Mail to: %s in whitelist, not archived' % (self.type, base))
+                    return self.sendmail(sender, recips, self.remove_aid(data, msg))
 
             ### Size check
             ### TODO 2.x check if it works
@@ -616,10 +620,10 @@ def multiplex(objs, function, *args):
             res.append(apply(method, args))
     return res
 
-def sig_int(signum, frame):
+def sig_int_term(signum, frame):
     global isRunning
     del signum, frame
-    LOG(E_TRACE, "[Main] Got SIGINT")
+    LOG(E_TRACE, "[Main] Got SIGINT/SIGTERM")
     isRunning = 0
     
     if len(serverPoll):
@@ -628,11 +632,6 @@ def sig_int(signum, frame):
         multiplex(serverPoll, 'shutdown_backend')
         multiplex(serverPoll, 'stop')
 
-def sig_hup(signum, frame):
-    del signum, frame
-    ### TODO 2.x implement reload??
-    LOG(E_ERR, '[Main] Reload current not implemented')
-       
 def do_shutdown(res=0):
     global quotatbl
     ### Close quota hash handler
@@ -683,11 +682,11 @@ if __name__ == '__main__':
             t, val, tb = exc_info()
             del t
             print 'Cannot swith to user', user, str(val)
-            exit(-1)
+            exit(-2)
 
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
-        exit(-1)
+        exit(-3)
 
     config = ConfigParser()
     config.read(configfile)
@@ -697,7 +696,7 @@ if __name__ == '__main__':
         pidfile = config.get('global', 'pidfile')
     except:
         LOG(E_ERR, '[Main] Missing pidfile options in config')
-        do_shutdown(-1)
+        do_shutdown(-4)
         
     locked = 1
     try:        
@@ -715,7 +714,7 @@ if __name__ == '__main__':
 
     if locked:
         LOG(E_ERR, '[Main] Unable to start Netfarm Archiver, another instance is running')
-        exit(-1)
+        do_shutdown(-5)
 
     ### Daemonize
     if not debug:
@@ -726,11 +725,6 @@ if __name__ == '__main__':
             del t                           
             print 'Cannot go in background mode', str(val)
 
-        ### TODO 2.x needed? remove also dup2 from import
-        #null = open('/dev/null')
-        #dup2(0, null.fileno())
-        #dup2(0, null.fileno())
-        #dup2(0, null.fileno())
         if pid: exit(0)
 
     ### Save my process id to file
@@ -738,7 +732,7 @@ if __name__ == '__main__':
         open(pidfile,'w').write(str(getpid()))
     except:
         LOG(E_ERR, '[Main] Pidfile is not writable')
-        do_shutdown(-2)
+        do_shutdown(-6)
 
     ### Quota table
     try:
@@ -772,17 +766,18 @@ if __name__ == '__main__':
         isRunning = 1
     else:
         LOG(E_ERR, '[Main] No stages configured, Aborting...')
-        do_shutdown(-4)
+        do_shutdown(-7)
 
     ### Install Signal handlers
     LOG(E_TRACE, '[Main] Installing signal handlers')
-    signal(SIGINT, sig_int)
-    signal(SIGHUP, sig_hup)
+    signal(SIGINT,  sig_int_term)
+    signal(SIGTERM, sig_int_term)
+    signal(SIGHUP,  SIG_IGN)
 
     try:
         granularity = config.getint('global', 'granularity')
     except:
-        granularity = 30
+        granularity = GRANULARITY
 
     while isRunning:
         ### Wait child threads

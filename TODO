@@ -45,17 +45,17 @@ TODO 2.x:
 - [done] code/log cleanup, checked with pychecker, lmtp has some harmless warning
 - [done] use cvs for dev / I was not in src group / added ssh key
 - [done - need checks on opened fd] Make daemon - switch user? - getopt cmdline args - need checks on opened fd
-- [done - why shutdown is so slow? ] remake init.d, maybe in python like zopectl
+- [done] why shutdown is so slow? default granularity is 10, it should be ok
+- [done] null return path mails should be in whitelist? - what returns rfc822.parseaddr?
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - test LMTP/SMTPServer classes
 - add a E_TRACE with connections
 - add a prefix to logs
 - Make templates for mails - needed ?
 - Make README.txt
-- Use "binary cursor" for rdbms storage?
 - Storage sql table needs to be rewritten (indexes, unique, etc)
 - sendmail method need extensive checks
 - fix loglevel/debuglevel in lmtp.py
 - fix lock/unlock uffa
-- add timeout to connections
-- null return path mails should be in whitelist? - what returns rfc822.parseaddr?
+- add timeout to connections (using sigalarm? this can break threads?)
+- remove the archiver id header of whitelist mails or storage backend will process it

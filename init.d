@@ -25,7 +25,7 @@ case "$1" in
 	;;
   stop)
 	echo -n "Stopping $DESC: "
-	start-stop-daemon --retry $TIMEOUT --signal 2 --pidfile $PIDFILE --stop
+	start-stop-daemon --retry $TIMEOUT --pidfile $PIDFILE --stop
 	echo "$NAME."
 	;;
   restart|force-reload)
