@@ -530,15 +530,19 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s: Message has yet been processed' % self.type)
                 return self.sendmail(sender, recips, data, aid, mid)
 
-            m_date = msg.getdate('Date')
-            try:
-                mktime(m_date)
-            except:
-                m_date = None
-                            
-            if m_date is None:
-                LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
-                m_date = localtime(time())
+            #m_date = msg.getdate('Date')
+            #try:
+            #    mktime(m_date)
+            #except:
+            #    m_date = None
+            #                
+            #if m_date is None:
+            #    LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
+            #    m_date = localtime(time())
+
+            ## Arrivar date
+            m_date = localtime(time())
+                        
                         
             del msg,stream
 
