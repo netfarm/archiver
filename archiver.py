@@ -846,7 +846,7 @@ def unix_startup(config, user=None):
         LOG(E_ALWAYS, '[Main] Unable to start Netfarm Archiver, another instance is running')
         do_shutdown(-5)
 
-    ## Daemonize - TODO win32 make it a service
+    ## Daemonize - Unix only - win32 has service
     if not debug:
         try:
             pid = fork()

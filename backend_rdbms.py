@@ -23,7 +23,6 @@ __doc__ = '''Netfarm Archiver - release 2.0.0 - Rdbms backend'''
 __version__ = '2.0.0'
 __all__ = [ 'Backend' ]
 
-## TODO Win32 use different driver??
 driver_map = { 'psql': 'psycopg' }
 
 qs_map = { 'archive':
