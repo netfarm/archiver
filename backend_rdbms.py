@@ -200,15 +200,17 @@ class Backend(BackendBase):
             try:
                 slog, sdom = sender[1].split('@', 1)
             except:
-                self.LOG(E_ERR, 'Error in from: ' + sender[1])
-                return 0, 443, 'Internal Server Error'
+                self.LOG(E_ERR, 'Error parsing from: ' + sender[1])
+                slog = sender[1]
+                sdom = sender[1]
             
             for dest in data['m_to']+data['m_cc']:
                 try:
                     dlog, ddom = dest[1].split('@',1)
                 except:
-                    self.LOG('Error in to/cc: ' + dest[1])
-                    return 0, 443, 'Internal Server Error'
+                    self.LOG(E_ERR, 'Error parsing to/cc: ' + dest[1])
+                    dlog = dest[1]
+                    ddom = dest[1]
             
                 values = { 'from_login': sql_quote(slog[:28]),
                            'from_domain': sql_quote(sdom[:255]),
