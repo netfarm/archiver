@@ -262,7 +262,7 @@ def StageHandler(config, stage_type):
 
             Thread.__init__(self)
             ### Init LMTPServer Class
-            Class.__init__(self, self.address)
+            Class.__init__(self, self.address, self.del_hook)
             self.lock = RLock()
             self.type = stage_type
             

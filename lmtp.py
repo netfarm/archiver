@@ -361,11 +361,11 @@ class LMTPChannel(async_chat):
         self.push('354 End data with <CR><LF>.<CR><LF>')
 
 class LMTPServer(dispatcher):
-    def __init__(self, localaddr):
+    def __init__(self, localaddr, del_hook=None):
         self.debuglevel = 0
         self.loop = loop
         self.banner = __version__
-        self.del_hook = None
+        self.del_hook = del_hook
         if localaddr.find(':')==-1:
             raise UnknownProtocol, localaddr
 
