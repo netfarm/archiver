@@ -37,7 +37,7 @@ TODO 2.x:
 - [done] hash to avoid duplicate process (e.g. failed to connect output server)
 - [done] address check should be now rfc compliant
 - [done] make separate hashdb for each backend
-- [done] add support for @mail.coral.com.cu:giovanni.sumberaz@sisam.it
+- [done] add support for @mail.domain1.com:email@domain2.com
 - [done] unix sockets permissions are 0777
 - [done] fix rfc821 syntax (a@host, b: etc + <+Mailbox>)
 - [done] removed all variables named "type" to avoid shadow of type()
@@ -61,5 +61,5 @@ TODO 2.x:
 - make debian package
 - check lmtp socket
 - unmimify attachment filenames
-- check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
+- [partially done - null chars are stripped] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
 - unmimify email addresses??
