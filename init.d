@@ -6,8 +6,10 @@
 #
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/var/lib/archiver/archiver.py
+DAEMON=/usr/lib/archiver/archiver.py
+PIDFILE=/var/lib/archiver/archiver.pid
 NAME=archiver
+TIMEOUT=120
 DESC="Netfarm Mail archiver"
 RUNAS="cyrus"
 
@@ -18,12 +20,12 @@ set -e
 case "$1" in
   start)
 	echo -n "Starting $DESC: "
-	start-stop-daemon -c $RUNAS -b --start --exec /var/lib/archiver/archiver.py
+	start-stop-daemon --start --exec $DAEMON -- -u $RUNAS
 	echo "$NAME."
 	;;
   stop)
 	echo -n "Stopping $DESC: "
-	kill -INT `cat /var/lib/archiver/archiver.pid`
+	start-stop-daemon --retry $TIMEOUT --signal 2 --pidfile $PIDFILE --stop
 	echo "$NAME."
 	;;
   restart|force-reload)

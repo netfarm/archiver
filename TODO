@@ -44,7 +44,8 @@ TODO 2.x:
 - [done] removed all variables named "type" to avoid shadow of type()
 - [done] code/log cleanup, checked with pychecker, lmtp has some harmless warning
 - [done] use cvs for dev / I was not in src group / added ssh key
-- [done] Make daemon - switch user? - getopt cmdline args - need checks on opened fd
+- [done - need checks on opened fd] Make daemon - switch user? - getopt cmdline args - need checks on opened fd
+- [done - why shutdown is so slow? ] remake init.d, maybe in python like zopectl
 - test LMTP/SMTPServer classes
 - add a E_TRACE with connections
 - add a prefix to logs
@@ -55,6 +56,5 @@ TODO 2.x:
 - sendmail method need extensive checks
 - fix loglevel/debuglevel in lmtp.py
 - fix lock/unlock uffa
-- remake init.d, maybe in python like zopectl
 - add timeout to connections
 - null return path mails should be in whitelist? - what returns rfc822.parseaddr?
