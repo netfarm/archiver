@@ -42,7 +42,7 @@ class Backend(BackendBase):
         if not access(self.storagedir, F_OK | R_OK | W_OK):
             raise BadStorageDir, self.storagedir
         
-        self.LOG(E_INFO, 'Filesystem Backend (%s) at %s ' % (self.type, self.storagedir))
+        self.LOG(E_ALWAYS, 'Filesystem Backend (%s) at %s ' % (self.type, self.storagedir))
         del ar_globals
                 
     ### Storage on filesystem
@@ -75,4 +75,4 @@ class Backend(BackendBase):
             return 0, 443, '%s: %s' % (t, val)
 
     def shutdown(self):
-        self.LOG(E_INFO, 'Filesystem Backend (%s): shutting down' % self.type)
+        self.LOG(E_ALWAYS, 'Filesystem Backend (%s): shutting down' % self.type)

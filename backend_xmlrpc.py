@@ -67,7 +67,7 @@ class Backend(BackendBase):
         url = config.get(self.type, 'url')
         self.hostname, self.port, self.url, self.username, self.password = decode_url(url)
         self.client = client(self.hostname, self.port)
-        self.LOG(E_INFO, 'XmlRpc Backend (%s) at %s port %d url is %s' %
+        self.LOG(E_ALWAYS, 'XmlRpc Backend (%s) at %s port %d url is %s' %
                  (self.type, self.hostname, self.port, self.url))
         del ar_globals
         
@@ -84,5 +84,5 @@ class Backend(BackendBase):
             return 0, 443, '%s: %s' % (t, val)
         
     def shutdown(self):
-        self.LOG(E_INFO, 'XmlRpc Backend (%s): closing connection' % self.type)
+        self.LOG(E_ALWAYS, 'XmlRpc Backend (%s): closing connection' % self.type)
         self.client = None

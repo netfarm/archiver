@@ -130,7 +130,7 @@ class Backend(BackendBase):
         try:
             self.connect()
         except: pass
-        self.LOG(E_INFO, 'Rdbms Backend (%s) %s at %s' % (self.type, driver, host))
+        self.LOG(E_ALWAYS, 'Rdbms Backend (%s) %s at %s' % (self.type, driver, host))
         del ar_globals
 
    
@@ -190,7 +190,7 @@ class Backend(BackendBase):
                 del tb
                 msg = format_msg(val)
                 self.LOG(E_ERR, 'Rdbms Backend: Cannot execute query: ' + msg)
-                self.LOG(E_TRACE, 'Rdbms Backend: query was: ' + qs)
+                self.LOG(E_ERR, 'Rdbms Backend: failed query was: ' + qs)
                 return 0, 443, '%s: Internal Server Error' % t
 
     def process_archive(self, data):
@@ -237,4 +237,4 @@ class Backend(BackendBase):
         
     def shutdown(self):
         self.close()
-        self.LOG(E_INFO, 'Rdbms Backend (%s): closing connection' % self.type)
+        self.LOG(E_ALWAYS, 'Rdbms Backend (%s): closing connection' % self.type)

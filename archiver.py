@@ -26,7 +26,8 @@ __all__ = [ 'BackendBase',
             'E_NONE',
             'E_ERR',
             'E_INFO',
-            'E_TRACE' ]
+            'E_TRACE',
+            'E_ALWAYS' ]
 
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
@@ -54,10 +55,12 @@ E_NONE=0
 E_ERR=1
 E_INFO=2
 E_TRACE=3
-DEBUGLEVELS = { 'none' : E_NONE,
-                'err'  : E_ERR,
-                'info' : E_INFO,
-                'trace': E_TRACE }
+E_ALWAYS=-1
+DEBUGLEVELS = { 'none'  : E_NONE,
+                'error' : E_ERR,
+                'info'  : E_INFO,
+                'trace' : E_TRACE,
+                'always': E_ALWAYS }
 ### Usefull constants
 NL='\n'
 AID='X-Archiver-ID'
@@ -334,7 +337,7 @@ def StageHandler(config, stage_type):
 
         def run(self):
             self.setName(self.type)
-            LOG(E_INFO, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
+            LOG(E_ALWAYS, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
             self.loop(self.granularity, self.usepoll, self.map)
 
         ### Hooks to gracefully stop threads
@@ -666,11 +669,11 @@ def multiplex(objs, function, *args):
 def sig_int_term(signum, frame):
     global isRunning
     del signum, frame
-    LOG(E_TRACE, "[Main] Got SIGINT/SIGTERM")
+    LOG(E_ALWAYS, "[Main] Got SIGINT/SIGTERM")
     isRunning = 0
     
     if len(serverPoll):
-        LOG(E_ERR, '[Main] Shutting down stages')
+        LOG(E_ALWAYS, '[Main] Shutting down stages')
         multiplex(serverPoll, 'finish')
         multiplex(serverPoll, 'shutdown_backend')
         multiplex(serverPoll, 'stop')
@@ -685,9 +688,9 @@ def do_shutdown(res=0):
         unlink(config.get('global', 'pidfile'))
     except: pass
 
-    LOG(E_ERR, '[Main] Waiting for child threads')
+    LOG(E_ALWAYS, '[Main] Waiting for child threads')
     multiplex(serverPoll, 'close')
-    LOG(E_ERR, '[Main] Shutdown complete')
+    LOG(E_ALWAYS, '[Main] Shutdown complete')
     LOG.close()
     sys_exit(res)
 
@@ -740,7 +743,7 @@ if __name__ == '__main__':
     try:
         pidfile = config.get('global', 'pidfile')
     except:
-        LOG(E_ERR, '[Main] Missing pidfile in config')
+        LOG(E_ALWAYS, '[Main] Missing pidfile in config')
         do_shutdown(-4)
         
     locked = 1
@@ -757,7 +760,7 @@ if __name__ == '__main__':
         locked = 0
 
     if locked:
-        LOG(E_ERR, '[Main] Unable to start Netfarm Archiver, another instance is running')
+        LOG(E_ALWAYS, '[Main] Unable to start Netfarm Archiver, another instance is running')
         do_shutdown(-5)
 
     ### Daemonize
@@ -785,7 +788,7 @@ if __name__ == '__main__':
     try:
         open(pidfile,'w').write(mypid)
     except:
-        LOG(E_ERR, '[Main] Pidfile is not writable')
+        LOG(E_ALWAYS, '[Main] Pidfile is not writable')
         do_shutdown(-6)
 
     ### Quota table
@@ -817,7 +820,7 @@ if __name__ == '__main__':
         multiplex(serverPoll, 'start')       
         isRunning = 1
     else:
-        LOG(E_ERR, '[Main] No stages configured, Aborting...')
+        LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
         do_shutdown(-7)
 
     ### Install Signal handlers
