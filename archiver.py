@@ -637,11 +637,17 @@ def StageHandler(config, stage_type):
                 return self.do_exit(552, 'Invalid Syntax in headers')
 
             ## Extraction of from field
-            m_from = msg.getaddrlist('From')
-
+            try:
+                m_from = msg.getaddrlist('From')
+            except:
+                return self.do_exit(443, 'Error parsing addrlist From: %s' % msg.get('From', None))
+                
             ## Extraction of to field
-            m_to = msg.getaddrlist('To')
-            
+            try:
+                m_to = msg.getaddrlist('To')
+            except:
+                return self.do_exit(443, 'Error parsing addrlist To: %s' % msg.get('To', None))
+                
             ## whitelist check, from, to and sender (envelope)
             try:
                 check_sender = [parseaddr(sender)]
@@ -680,8 +686,12 @@ def StageHandler(config, stage_type):
                         return self.do_exit(523, 'Send quota execeded')
 
             ## Extraction of cc field
-            m_cc = msg.getaddrlist('Cc')
-
+            try:
+                m_cc = msg.getaddrlist('Cc')
+            except:
+                return self.do_exit(443, 'Error parsing addrlist Cc: %s' % msg.get('Cc', None))
+                
+                
             ## Extraction of Subject field
             m_sub = msg.get('Subject', '')
 
