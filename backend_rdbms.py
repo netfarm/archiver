@@ -185,8 +185,8 @@ class Backend(BackendBase):
             raise ConnectionError, msg
             
         try:
-            #self.connection.autocommit(1)
-            self.connection.set_isolation_level(0)
+            self.connection.autocommit(1)
+            #self.connection.set_isolation_level(0)
         except:
             self.LOG(E_TRACE, 'Rdbms Backend: driver has not isolation_level facility')
         self.cursor = self.connection.cursor()
