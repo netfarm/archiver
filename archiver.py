@@ -313,6 +313,7 @@ def StageHandler(config, stage_type):
         """Base class for a StageHandler Backend"""
         def __init__(self, Class, config, stage_type):
             """StageHandler Constructor"""
+            global main_svc
             self.process_message = getattr(self, 'process_' + stage_type, None)
             if self.process_message is None:
                 raise BadStageTypeError, stage_type
@@ -345,8 +346,8 @@ def StageHandler(config, stage_type):
             if platform == 'win32':
                 ## No support for poll on win32
                 self.usepoll = 0 
-                ## Bug: hang on close if using psycopg
-                self.setDaemon(1)
+                ## Bug: hang on close if using psycopg / Not needed if run as service
+                self.setDaemon(main_svc)
                 
             try:
                 self.nowait = config.getint('global', 'nowait')
@@ -865,7 +866,7 @@ def ServiceStartup(configfile, user=None, debug=None, service_main=0):
     main_svc = service_main
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
-        sys_exit(-3)
+        return -3
 
     config = ConfigParser()
     config.read(configfile)
