@@ -82,7 +82,7 @@ class DEBUGServer:
         pass
     
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
-CHECKHEADERS = ['from', 'to', 'cc', 'subject', 'date', 'message-id']
+CHECKHEADERS = ['from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower()]
 whitelist = []
 input_classes  = { 'lmtp': LMTPServer, 'smtp': SMTPServer }
 output_classes = { 'lmtp': LMTP, 'smtp': SMTP, 'debug': DEBUGServer }
