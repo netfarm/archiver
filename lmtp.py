@@ -309,10 +309,12 @@ class LMTPChannel(async_chat):
             self.push('250 2.0.0 Ok')
 
     def lmtp_QUIT(self, arg):
+        del arg
         self.push('221 2.0.0 Bye')
         self.close_when_done()
 
     def lmtp_RSET(self, arg):
+        del arg
         self.__line = []
         self.__state = self.COMMAND
         self.__mailfrom = None
@@ -349,6 +351,7 @@ class LMTPChannel(async_chat):
         self.push('250 2.0.0 Ok')
 
     def lmtp_BDAT(self, arg):
+        del arg
         self.push('502 5.5.1 BDAT not implemented')
 
     def lmtp_DATA(self, arg):
@@ -363,7 +366,9 @@ class LMTPChannel(async_chat):
         self.push('354 End data with <CR><LF>.<CR><LF>')
 
 class LMTPServer(dispatcher):
-    def __init__(self, localaddr):
+    def __init__(self, localaddr, lock=None):
+        self.debuglevel = 0
+        self.lock = lock
         self.loop = loop
         self.banner = __version__
         if localaddr.find(':')==-1:
@@ -422,6 +427,7 @@ class LMTPServer(dispatcher):
         try:
             conn, addr = self.accept()
             channel = LMTPChannel(self, conn, addr, self.map, self.lock)
+            channel.debuglevel = self.debuglevel
         except: pass
                     
     # API for "doing something useful with the message"
@@ -456,6 +462,7 @@ class SMTPChannel(smtpd_SMTPChannel):
     COMMAND = 0
     DATA = 1
     def __init__(self, server, conn, addr, map=None, lock=None):
+        self.debuglevel = 0
         self.ac_in_buffer = ''
         self.ac_out_buffer = ''
         self.producer_fifo = fifo()
@@ -506,10 +513,11 @@ class SMTPChannel(smtpd_SMTPChannel):
     def close(self):
         self.del_channel(self.map)
         self.socket.close()
-        try:
-            self.lock.release()
-            if self.debuglevel > 0: print 'Lock released'
-        except: pass
+        if self.lock:
+            try:
+                self.lock.release()
+                if self.debuglevel > 0: print 'Lock released'
+            except: pass
         
 class SMTPServer(LMTPServer):
     def handle_accept(self):
@@ -517,6 +525,7 @@ class SMTPServer(LMTPServer):
         try:
             conn, addr = self.accept()
             channel = SMTPChannel(self, conn, addr, self.map, self.lock)
+            channel.debuglevel = self.debuglevel
         except: pass
 
 class DebuggingServer(LMTPServer):

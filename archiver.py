@@ -31,9 +31,9 @@ __all__ = [ 'BackendBase',
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from signal import signal,SIGTERM,SIGINT,SIGHUP, SIG_IGN
 from time import strftime, time, mktime, localtime, sleep
-from sys import argv, exit, exc_info, stdout, stderr
+from sys import argv, exit, exc_info, stdin, stdout, stderr
 from os import fork, getpid, kill, unlink, chmod, access, F_OK, R_OK
-from os import seteuid, setegid
+from os import close, dup, seteuid, setegid
 from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
@@ -151,6 +151,12 @@ class Logger:
             pass
         del timestr, outstr
 
+    def fileno(self):
+        return self.log_fd.fileno()
+
+    def flush(self):
+        return self.log_fd.flush()
+    
     def close(self):
         try:
             self.log_fd.close()
@@ -248,13 +254,13 @@ def StageHandler(config, stage_type):
                 raise BadStageTypeError, stage_type
 
             try:
-                input, address = config.get(stage_type, 'input').split(':', 1)
+                self.proto, self.address = config.get(stage_type, 'input').split(':', 1)
             except:
                 raise BadStageInput
 
             Thread.__init__(self)
             ### Init LMTPServer Class
-            Class.__init__(self, address)
+            Class.__init__(self, self.address)
             self.lock = RLock()
             
             ### Hooks
@@ -285,9 +291,9 @@ def StageHandler(config, stage_type):
                 raise Exception, '%s: Cannot open hashdb file' % self.type
 
             try:
-                self.loglevel = config.getint(self.type, 'loglevel')
+                self.debuglevel = config.getint(self.type, 'debuglevel')
             except:
-                self.loglevel = 0
+                self.debuglevel = 0
             
             ### Set custom banner
             self.banner = 'Netfarm Archiver [%s] version [%s]' % (stage_type, __version__)
@@ -322,7 +328,7 @@ def StageHandler(config, stage_type):
 
         def run(self):
             self.setName(self.type)
-            LOG(E_INFO, '[%d] Starting Stage Handler type %s: %s' % (getpid(), self.type, self.output))
+            LOG(E_INFO, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
             while isRunning:
                 self.loop(self.granularity, self.usepoll, self.map)               
 
@@ -330,6 +336,7 @@ def StageHandler(config, stage_type):
         def accept_hook(self):
             LOG(E_TRACE, '%s: I got a connection: Acquiring lock' % self.type)
             self.lock.acquire()
+            LOG.flush()
             return self._handle_accept()
 
         def finish(self, force=0):
@@ -726,7 +733,16 @@ if __name__ == '__main__':
             print 'Cannot go in background mode', str(val)
 
         if pid: exit(0)
-
+        
+        null = open('/dev/null', 'r')
+        close(stdin.fileno())
+        dup(null.fileno())
+        null.close()
+        close(stdout.fileno())
+        dup(LOG.fileno())
+        close(stderr.fileno())
+        dup(LOG.fileno())
+    
     ### Save my process id to file
     try:
         open(pidfile,'w').write(str(getpid()))
@@ -751,7 +767,7 @@ if __name__ == '__main__':
     ### Starting up
 
     if user:
-        LOG(E_INFO, '[Main] Running as user %s' % user)
+        LOG(E_INFO, '[Main] Running as user %s pid %s' % (user, getpid()))
     
     ### Creating stage sockets
     ### Archive stage
