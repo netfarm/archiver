@@ -463,7 +463,9 @@ def StageHandler(config, stage_type):
                     year = int(year)
                     pid = int(pid)
                 except:
-                    LOG(E_ERR, '%s: Invalid X-Archiver-ID header' % self.type)
+                    t, val, tb = exc_info()
+                    del tb
+                    LOG(E_ERR, '%s: Invalid X-Archiver-ID header [%s]' % (self.type, str(val)))
                     return self.do_exit(550, 'Invalid X-Archiver-ID header')
 
                 stuff = { 'mail': data, 'year': year, 'pid': pid, 'date': m_date }
@@ -486,7 +488,7 @@ def StageHandler(config, stage_type):
             return self.sendmail(sender, recips, data, aid, mid)
 
         def add_aid(self, data, msg, aid):
-            archiverid = '%s: %s' % (AID, aid)
+            archiverid = '%s: %s\n' % (AID, aid)
             LOG(E_INFO, '%s: %s' % (self.type, archiverid))
             headers = data[:msg.startofbody]
             if msg.get(AID, None):
