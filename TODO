@@ -46,6 +46,7 @@ TODO 2.x:
 - [done] use cvs for dev / I was not in src group / added ssh key
 - [done - need checks on opened fd] Make daemon - switch user? - getopt cmdline args - need checks on opened fd
 - [done - why shutdown is so slow? ] remake init.d, maybe in python like zopectl
+- Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - test LMTP/SMTPServer classes
 - add a E_TRACE with connections
 - add a prefix to logs
