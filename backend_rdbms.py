@@ -160,7 +160,7 @@ class Backend(BackendBase):
         except:
             self.LOG(E_TRACE, 'Rdbms Backend: driver has not autocommit facility')
         self.cursor = self.connection.cursor()
-        self.LOG(E_TRACE, 'Rdbms Backend: I got a cursor from the driver')
+        self.LOG(E_TRACE, 'Rdbms Backend: I\'ve got a cursor from the driver')
 
 
     def do_query(self, qs, fetch=None):

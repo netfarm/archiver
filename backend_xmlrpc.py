@@ -60,7 +60,7 @@ class Backend(BackendBase):
         self.type = stage_type
         self.LOG = ar_globals['LOG']
         try:
-            setLogLevel(config.getint(self.type, 'loglevel'))
+            setLogLevel(config.getint(self.type, 'debuglevel'))
             setLogger(self.LOG['log_fd'])
         except:
             setLogLevel(0)
