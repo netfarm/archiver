@@ -54,6 +54,7 @@ re_addr = re.compile(r"<(.*)>(.*)")
 re_feat = re.compile(r"(?P<feature>[A-Za-z0-9][A-Za-z0-9\-]*)")
 
 ### Exceptions
+##
 class UnknownProtocol(Exception):
     """@exception UnknownProtocol The selected protocol is not implemented
     @brief Exception: The selected protocol is not implemented"""
@@ -312,6 +313,7 @@ class LMTPChannel(async_chat):
                 self.push(status)
 
     def close(self):
+        """Close the channel and the socket"""
         self.del_channel(self.map)
         self.socket.close()
                 
@@ -353,7 +355,6 @@ class LMTPChannel(async_chat):
         self.__data = ''
         self.__8bit = None
         self.push('250 2.0.0 Ok')
-   
 
     def lmtp_MAIL(self, arg):
         """ LMTP MAIL Command implementation"""
@@ -466,6 +467,7 @@ class LMTPServer(dispatcher):
             except: pass
 
     def close_all(self):
+        """@brief closes all connections"""
         asyn_close_all(self.map)
         
     def handle_accept(self):
@@ -507,9 +509,11 @@ class LMTPServer(dispatcher):
 
 ### SMTP Server stuff
 class SMTPChannel(smtpd_SMTPChannel):
+    """@brief Communication channel to handle a chat-style connection"""
     COMMAND = 0
     DATA = 1
     def __init__(self, server, conn, addr, map=None):
+        """The constructor"""
         self.debuglevel = 0
         self.ac_in_buffer = ''
         self.ac_out_buffer = ''
@@ -532,6 +536,7 @@ class SMTPChannel(smtpd_SMTPChannel):
         self.__getaddr = getaddr
         
     def smtp_MAIL(self, arg):
+        """@brief SMTP 'mail' command"""
         address, options = self.__getaddr('FROM:', arg)
         if address is None:
             self.push('500 5.5.2 Syntax: MAIL FROM:<address> [ SP <mail-parameters> ]')
@@ -547,6 +552,7 @@ class SMTPChannel(smtpd_SMTPChannel):
             self.push('250 2.0.0 Ok')
 
     def smtp_RCPT(self, arg):
+        """@brief SMTP 'rcpt' command"""
         if self.__mailfrom is None:
             self.push('503 5.5.1 Error: need MAIL command')
             return
@@ -558,10 +564,12 @@ class SMTPChannel(smtpd_SMTPChannel):
         self.push('250 2.0.0 Ok')
 
     def close(self):
+        """Close the channel and the socket"""
         self.del_channel(self.map)
         self.socket.close()
                 
 class SMTPServer(LMTPServer):
+    """@brief Async Server, it handle the connection using SMTPChannel"""
     def handle_accept(self):
         ### gracefully shutdown if some signal has interrupted self.accept()
         try:

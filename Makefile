@@ -12,6 +12,9 @@ clean:
 cleandoc:
 	rm -fr doc *.log
 
+distclean: clean cleandoc
+	
+
 pycheck:
 	pychecker backend_*.py archiver.py lmtp.py
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- Mode: Python; tab-width: 4 -*-
 #
-# Netfarm Mail Archiver - release 2.x
+# Netfarm Mail Archiver - release 2
 #
 # Copyright (C) 2004 Gianluigi Tiesi <sherpya@netfarm.it>
 # Copyright (C) 2004 NetFarm S.r.l.  [http://www.netfarm.it]
@@ -19,8 +19,8 @@
 ## @file backend_rdbms.py
 ## @brief RDBMS Storage and Archive Backend
 
-__doc__ = '''Netfarm Archiver - release 2.x - Rdbms backend'''
-__version__ = '2.0a1'
+__doc__ = '''Netfarm Archiver - release 2.0.0 - Rdbms backend'''
+__version__ = '2.0.0'
 __all__ = [ 'Backend' ]
 
 driver_map = { 'psql': 'psycopg' }

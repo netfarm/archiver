@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- Mode: Python; tab-width: 4 -*-
 #
-# Netfarm Mail Archiver - release 2.x
+# Netfarm Mail Archiver - release 2
 #
 # Copyright (C) 2004 Gianluigi Tiesi <sherpya@netfarm.it>
 # Copyright (C) 2004 NetFarm S.r.l.  [http://www.netfarm.it]
@@ -19,8 +19,8 @@
 ## @file archiver.py
 ## @brief Netfarm Mail Archiver [core]
 
-__doc__ = '''Netfarm Archiver relase 2.x - Main worker'''
-__version__ = '2.0a1'
+__doc__ = '''Netfarm Archiver relase 2.0.0 - Main worker'''
+__version__ = '2.0.0'
 __all__ = [ 'BackendBase',
             'StorageTypeNotSupported',
             'BACKEND_OK',
@@ -81,13 +81,16 @@ serverPoll = []
 class DEBUGServer:
     """@brief Debug Server used only for debugging connections"""
     def __init__(self, address, port):
+        """@brief DEBUGServer Constructor"""
         print 'DEBUGServer: output %s:%s' % (address, port)
 
     def sendmail(self, m_from, m_to, msg):
+        """@brief DEBUGServer fake sendmail"""
         print 'DEBUGServer: sendmail from: %s to %s - size %d' % (m_from, m_to, len(msg))
         return ''  
         
     def close(self):
+        """@brief DEBUGServer dummy close"""
         pass
     
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
@@ -176,6 +179,10 @@ class Logger:
             self.logstrtime = "%m/%d/%Y %H:%M:%S"
 
     def __call__(self, level, msg):
+        """@brief Default call method for Logger class
+
+        It's used to append a message to the logfile depending on
+        the severity"""
         if self.loglevel < level:
             return
         timestr = strftime(self.logstrtime, localtime(time()))
@@ -188,12 +195,17 @@ class Logger:
         del timestr, outstr
 
     def fileno(self):
+        """@brief returns logfile fd
+
+        Used to pass it on some backends like xmlrpc"""
         return self.log_fd.fileno()
 
     def flush(self):
+        """@brief flushes the Logger fd to force the write operation"""
         return self.log_fd.flush()
     
     def close(self):
+        """@brief closes the Logger fd"""
         try:
             self.log_fd.close()
         except: pass
@@ -203,6 +215,9 @@ mime_head = re.compile('=\\?(.*?)\\?(\w)\\?([^? \t\n]+)\\?=', re.IGNORECASE)
 encodings = {'q': mime_decode, 'b': decodestring }
 
 def mime_decode_header(line):
+    """@brief workaound to python mime_decode_header
+
+    The original code doesn't support base64"""
     newline = ''
     pos = 0
     while 1:
@@ -264,6 +279,9 @@ def parse(submsg):
     return found
 
 def dupe_check(headers):
+    """@brief Check for duplicate headers
+
+    Some headers should be unique"""
     check = []
     for hdr in headers:
         hdr = hdr.strip()
@@ -276,6 +294,7 @@ def dupe_check(headers):
     return 0
 
 def StageHandler(config, stage_type):
+    """@brief Meta class for a StageHandler Backend"""
 ##### Class Wrapper - Start
     ### I need class type before __init__
     try:
@@ -285,7 +304,8 @@ def StageHandler(config, stage_type):
     except:
         raise BadStageInput
         
-    class StageHandler(Thread, input_classes[input_class]):    
+    class StageHandler(Thread, input_classes[input_class]):
+        """@brief Base class for a StageHandler Backend"""
         def __init__(self, Class, config, stage_type):
             """StageHandler Constructor"""
             self.process_message = getattr(self, 'process_' + stage_type, None)
@@ -376,15 +396,18 @@ def StageHandler(config, stage_type):
 
         ## Hooks to gracefully stop threads
         def accept_hook(self):
+            """@brief hook called when the server accepts an incoming connection"""
             LOG(E_TRACE, '%s: I got a connection: Acquiring lock' % self.type)
             self.lock.acquire()
             return self._handle_accept()
 
         def del_hook(self):
+            """@brief hook called when a connection is terminated"""
             LOG(E_TRACE, '%s: Connection closed: Releasing lock' % self.type)
             self.lock.release()
 
         def finish(self, force=0):
+            """@brief shutdown the Archiver system waiting for unterminated jobs"""
             if not self.nowait and not force:
                 LOG(E_TRACE, '%s: Waiting thread job...' % self.getName())
                 self.lock.acquire()
@@ -392,7 +415,7 @@ def StageHandler(config, stage_type):
             self.close_all()
                         
         def sendmail(self, m_from, m_to, msg, aid=None, mid=None):
-            """@brief Rerouting of mails to postfix"""
+            """@brief Rerouting of mails to nexthop (postfix)"""
             
             if msg is None: # E.g. regex has failed
                 LOG(E_ERR, '%s-sendmail: msg is None something went wrong ;(' % self.type)
@@ -461,6 +484,9 @@ def StageHandler(config, stage_type):
                 return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
 
         def do_exit(self, code, msg='', extcode=None):
+            """@brief Exit function
+
+            @returns exit code and messages"""
             self.del_channel()
             if not extcode:
                 extcode = code
@@ -468,6 +494,7 @@ def StageHandler(config, stage_type):
             return ' '.join([str(code), excode, msg])
 
         def process_storage(self, peer, sender, recips, data):
+            """@brief Stores the archived email using a Backend"""
             size = len(data)
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
@@ -528,8 +555,9 @@ def StageHandler(config, stage_type):
             return self.sendmail(sender, recips, data, aid, mid)
 
         def add_aid(self, data, msg, aid):
-            archiverid = '%s: %s\n' % (AID, aid)
+            archiverid = '%s: %s' % (AID, aid)
             LOG(E_INFO, '%s: %s' % (self.type, archiverid))
+            archiverid = archiverid + NL
             headers = data[:msg.startofbody]
             if msg.get(AID, None):
                 LOG(E_ERR, '%s: Warning overwriting X-Archiver-ID header' % self.type)
@@ -559,6 +587,7 @@ def StageHandler(config, stage_type):
             return data
         
         def process_archive(self, peer, sender, recips, data):
+            """@brief Archives email meta data using a Backend"""
             global quotatbl
             global whitelist
 
@@ -693,6 +722,9 @@ def StageHandler(config, stage_type):
     return apply(StageHandler, (input_classes[input_class], config, stage_type))
 
 def multiplex(objs, function, *args):
+    """@brief Generic method multiplexer
+
+    It executes the given method and args for each object in the list"""
     res = []
     for obj in objs:
         method = getattr(obj, function, None)
@@ -701,6 +733,9 @@ def multiplex(objs, function, *args):
     return res
 
 def sig_int_term(signum, frame):
+    """@brief Handler for SIGINT and SIGTERM signals
+
+    Terminates the StageHandler threads"""
     global isRunning
     del signum, frame
     LOG(E_ALWAYS, "[Main] Got SIGINT/SIGTERM")
@@ -713,6 +748,7 @@ def sig_int_term(signum, frame):
         multiplex(serverPoll, 'stop')
 
 def do_shutdown(res=0):
+    """@brief Archiver system shutdown"""
     global quotatbl
     ## Close quota hash handler
     if quotatbl:
