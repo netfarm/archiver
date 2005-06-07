@@ -224,6 +224,7 @@ class Backend(BackendBase):
         Query -> reconnection -> Query
         @param qs: the query string
         @param fetch: is defined then the query must return a result
+        @param autorecon: if defined and if a query fails a db reconnection is done
         @return: year, pid, message, if year is 0 an error is occured,
                  pid has the code, message contains a more detailed explanation"""
         try:
