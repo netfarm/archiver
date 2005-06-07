@@ -28,18 +28,18 @@ driver_map = { 'psql': 'psycopg' }
 qs_map = {
     'archive':
     [ '''UPDATE mail_pid
-         SET pid  = (pid+1)
-         WHERE year=int4(EXTRACT (YEAR FROM NOW()));
+         SET pid  = (pid + 1)
+         WHERE year = int4(EXTRACT (YEAR FROM NOW()));
          (
-         SELECT pid,
-         year as pid_year
-         FROM mail_pid
-         WHERE year=int4(EXTRACT (YEAR FROM NOW()))
+          SELECT pid,
+          year as pid_year
+          FROM mail_pid
+          WHERE year=int4(EXTRACT (YEAR FROM NOW()))
          )
          UNION
          (
-         SELECT -1 as pid,
-         int4(EXTRACT (YEAR FROM NOW()))
+          SELECT -1 as pid,
+          int4(EXTRACT (YEAR FROM NOW()))
          )
          ORDER BY pid DESC
          LIMIT 1;''',
@@ -47,10 +47,10 @@ qs_map = {
          (year, pid)
          VALUES
          (int4(EXTRACT (YEAR FROM NOW())), 1);
-         SELECT 	pid,
+         SELECT pid,
          year as pid_year
          FROM mail_pid
-         WHERE year=int4(EXTRACT (YEAR FROM NOW()));''',
+         WHERE year = int4(EXTRACT (YEAR FROM NOW()));''',
       '''INSERT INTO mail
          (year,
          pid,
@@ -138,12 +138,12 @@ class Backend(BackendBase):
         self.type = stage_type
         self.query = qs_map.get(self.type, None)
         if self.query is None:
-            raise StorageTypeNotSupported, self.type 
+            raise StorageTypeNotSupported, self.type
         self.LOG = ar_globals['LOG']
         self.process = getattr(self, 'process_' + self.type, None)
         if self.process is None:
             raise StorageTypeNotSupported, self.type
-            
+
         try:
             dsn = config.get(self.type, 'dsn', None)
             driver, username, password, host, dbname = dsn.split(':')
@@ -162,7 +162,7 @@ class Backend(BackendBase):
 
         if self.db_connect is None:
             raise Exception, 'Rdbms Backend: Driver misses connect method'
-        
+
         self.connection = None
         self.cursor = None
         try:
@@ -171,19 +171,18 @@ class Backend(BackendBase):
         self.LOG(E_ALWAYS, 'Rdbms Backend (%s) %s at %s' % (self.type, driver, host))
         del ar_globals
 
-   
     def close(self):
-        """closes the cursor and the connection"""      
+        """closes the cursor and the connection"""
         try:
             self.cursor.close()
             del self.cursor
         except: pass
-            
+
         try:
             self.connection.close()
             del self.connection
         except: pass
-            
+
     def connect(self):
         """make a connection to rdbms
 
@@ -198,14 +197,28 @@ class Backend(BackendBase):
             msg = format_msg(val)
             self.LOG(E_ERR, 'Rdbms Backend: connection to database failed: ' + msg)
             raise ConnectionError, msg
-            
+
+        ## Try to disable autocommit
         try:
             self.connection.autocommit(0)
-        except: pass
+        except:
+            t, val, tb = exc_info()
+            del tb
+            msg = format_msg(val)
+            self.LOG(E_ERR, 'Rdbms Backend: cannot disable autocommit on the DB connection: ' + msg)
+            self.close()
+            raise ConnectionError, msg
+
+        ## Check if connection has rollback method
+        if not hasattr(self.connection, 'rollback'):
+            self.LOG(E_ERR, 'Rdbms Backend: DB Connection doesn\'t provide a rollback method')
+            self.close()
+            raise ConnectionError, 'No rollback method'
+
         self.cursor = self.connection.cursor()
         self.LOG(E_TRACE, 'Rdbms Backend: I\'ve got a cursor from the driver')
 
-    def do_query(self, qs, fetch=None):
+    def do_query(self, qs, fetch=None, autorecon=None):
         """execute a query
 
         Query -> reconnection -> Query
@@ -221,16 +234,15 @@ class Backend(BackendBase):
             else:
                 return BACKEND_OK
         except:
-            self.LOG(E_ERR, 'Rdbms Backend: query fails, maybe disconnected')
-            try:
-                self.connect()
-                self.cursor.execute(qs)
-                if fetch:
-                    res = self.cursor.fetchone()
-                    return res[1], res[0], 'Ok'
-                else:
-                    return BACKEND_OK
-            except:
+            self.LOG(E_ERR, 'Rdbms Backend: query fails')
+            if autorecon:
+                self.LOG(E_ERR, 'Rdbms Backend: Trying to reopen DB Connection')
+                try:
+                    self.connect()
+                except:
+                    return 0, 443, 'Internal Server Error - Error reopening DB connection'
+                return self.do_query(qs, fetch, autorecon=None)
+            else:
                 t, val, tb = exc_info()
                 del tb
                 msg = format_msg(val)
@@ -244,12 +256,15 @@ class Backend(BackendBase):
         Creates a query by using data passed by the main archiver process
         @param data: is a dict containing all needed stuff
         @return: the result of do_query"""
-        
-        year, pid, result = self.do_query(self.query[0], fetch=1)
+
+        year, pid, result = self.do_query(self.query[0], fetch=1, autorecon=1)
 
         ## There is no pid for current year, so we create a new entry in the table
         if pid == -1:
-                year, pid, result = self.do_query(self.query[1], fetch=1)
+            year, pid, result = self.do_query(self.query[1], fetch=1)
+
+        if pid == 0:
+            return year, pid, result
 
         qs = ''
         nattach = len(data['m_attach'])
@@ -262,7 +277,7 @@ class Backend(BackendBase):
                 self.LOG(E_ERR, 'Error parsing from: ' + sender[1])
                 slog = sender[1]
                 sdom = sender[1]
-            
+
             for dest in data['m_to']+data['m_cc']:
                 try:
                     dlog, ddom = dest[1].split('@',1)
@@ -270,7 +285,7 @@ class Backend(BackendBase):
                     self.LOG(E_ERR, 'Error parsing to/cc: ' + dest[1])
                     dlog = dest[1]
                     ddom = dest[1]
-            
+
                 values = { 'from_login': sql_quote(slog[:28]),
                            'from_domain': sql_quote(sdom[:255]),
                            'to_login': sql_quote(dlog[:28]),
@@ -279,10 +294,15 @@ class Backend(BackendBase):
                            'date': date,
                            'attachments': nattach }
                 qs = qs + (self.query[2] % values)
-        self.do_query(qs)
+
+        res = self.do_query(qs)
+        if res != BACKEND_OK:
+            self.connection.rollback()
+            return res
+
         self.connection.commit()
         return year, pid, result
-    
+
     def process_storage(self, data):
         """process storaging of mail on a rdbms
 
@@ -293,9 +313,9 @@ class Backend(BackendBase):
                 'pid' : data['pid'],
                 'mail': encodestring(data['mail'])
                 }
-        
+
         return self.do_query(self.query[0] % msg)
-        
+
     def shutdown(self):
         """shutdown the rdbms stage
 

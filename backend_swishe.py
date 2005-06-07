@@ -37,7 +37,7 @@ from fcntl import flock, LOCK_EX, LOCK_UN
 class BadSpoolDir(Exception):
     """BadSpoolDir Bad Swish-e spooling directory in config file"""
     pass
-        
+
 class Backend(Backend_filesystem):
     """Swish-e Class
 
@@ -77,7 +77,7 @@ class Backend(Backend_filesystem):
             raise BadSpoolDir, self.spooldir
 
         self.lockfile = self.config.get(self.type, 'lockfile')
-        
+
         self.LOG(E_ALWAYS, 'Swish-e Backend (%s) storage at %s spool at %s'
                  % (self.type, self.storagedir, self.spooldir))
 
@@ -110,7 +110,7 @@ class Backend(Backend_filesystem):
 
         self.pidgen[dbindex] = str(newpid+1)
         return year, newpid, 'OK'
-    
+
     def process_storage(self, data):
         """Process storage
 
@@ -121,7 +121,7 @@ class Backend(Backend_filesystem):
 
         if res != BACKEND_OK:
             return res
-        
+
         src  = self.get_paths(data)[1]
         dest = path.join(self.spooldir, '%s-%s' % (data['year'], data['pid']))
 
@@ -135,8 +135,8 @@ class Backend(Backend_filesystem):
             t, val, tb = exc_info()
             del tb
             self.LOG(E_ERR, 'Swish-e Backend: Cannot symlink %s to %s - %s' % (src, dest, val))
-            return 0, 443, '%s: %s' % (t, val)            
-        
+            return 0, 443, '%s: %s' % (t, val)
+
     def shutdown(self):
         """Backend Shutdown callback"""
         self.LOG(E_ALWAYS, 'Swish-e Backend (%s): shutting down' % self.type)

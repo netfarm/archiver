@@ -42,13 +42,13 @@ class Backend(BackendBase):
         self.type = stage_type
         if self.type != 'storage':
             raise StorageTypeNotSupported, self.type
-        
+
         self.LOG = ar_globals['LOG']
         self.storagedir = config.get(self.type, 'storagedir')
-        
+
         if not access(self.storagedir, F_OK | R_OK | W_OK):
             raise BadStorageDir, self.storagedir
-        
+
         self.LOG(E_ALWAYS, 'Filesystem Backend (%s) at %s ' % (self.type, self.storagedir))
         del ar_globals
 
@@ -58,7 +58,7 @@ class Backend(BackendBase):
         mailpath = path.join(self.storagedir, str(data['year']), str(month))
         filename = path.join(mailpath, str(data['pid']))
         return mailpath, filename
-        
+
     ## Storage on filesystem
     def process(self, data):
         mailpath, filename = self.get_paths(data)
@@ -72,7 +72,7 @@ class Backend(BackendBase):
                 del tb
                 self.LOG(E_ERR, 'Filesystem Backend: Cannot create storage directory: ' + str(val))
                 return 0, 443, '%s: %s' % (t, val)
-            
+
         try:
             fd = open(filename, 'wb')
             fd.write(data['mail'])

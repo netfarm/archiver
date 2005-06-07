@@ -47,7 +47,7 @@ def decode_url(url):
     username, password = None, None
     if res[0].lower() != 'http':
         raise BadUrlSyntax
-    
+
     if res[1].find('@')!=-1:
         try:
             auth_str, host_str = res[1].split('@', 1)
@@ -62,14 +62,14 @@ def decode_url(url):
         port = int(port)
     except:
         raise BadUrlSyntax, url
-        
+
     url = res[2]
     return hostname, port, url, username, password
 
 class Backend(BackendBase):
     """XMLrpc Backend using python-xmlrpc
 
-    This backend can be used with a xmlrpc capable server like zope""" 
+    This backend can be used with a xmlrpc capable server like zope"""
     def __init__(self, config, stage_type, ar_globals):
         """The constructor"""
         self.config = config
@@ -86,7 +86,7 @@ class Backend(BackendBase):
         self.LOG(E_ALWAYS, 'XmlRpc Backend (%s) at %s port %d url is %s' %
                  (self.type, self.hostname, self.port, self.url))
         del ar_globals
-        
+
     def process(self, data):
         """Archive backend proces
         @param data: The data argument is a dict containing mail info and the mail itself
@@ -103,7 +103,7 @@ class Backend(BackendBase):
             if isinstance(val, fault):
                 val = val.faultString
             return 0, 443, '%s: %s' % (t, val)
-        
+
     def shutdown(self):
         """Backend Shutdown callback"""
         self.LOG(E_ALWAYS, 'XmlRpc Backend (%s): closing connection' % self.type)

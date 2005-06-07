@@ -61,7 +61,7 @@ if len(sys.argv)==1 or \
    (len(sys.argv)==2 and sys.argv[1] in ['-q', '-n']):
     sys.argv.append("py2exe")
 
-setup(name = "nma.py",      
+setup(name = "nma.py",
       version = "2.0.0",
       description = "Netfarm Mail Archiver",
       service = [nma],

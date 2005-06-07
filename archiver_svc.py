@@ -42,7 +42,7 @@ class NetfarmArchiverService(ServiceFramework):
     def __init__(self, args):
         """ Costructor for The NtService class """
         ServiceFramework.__init__(self, args)
-        
+
         ## Read Configuration
         hKey = RegOpenKey(HKEY_LOCAL_MACHINE, r'Software\Netfarm\Netfarm Mail Archiver')
         value, type = RegQueryValueEx(hKey, 'ConfigFile')
@@ -52,7 +52,7 @@ class NetfarmArchiverService(ServiceFramework):
 
         ## Append App path to python path
         path.append(ExpandEnvironmentStrings(value))
-        
+
         from archiver import ServiceStartup, sig_int_term
         self.ServiceStartup = ServiceStartup
         self.ServiceStop = sig_int_term
@@ -79,7 +79,7 @@ class NetfarmArchiverService(ServiceFramework):
                 LogErrorMsg('Netfarm Mail Archiver Service returned an error (%d)' % res)
         else:
             LogMsg(EVENTLOG_INFORMATION_TYPE, PYS_SERVICE_STOPPED, (self._svc_name_, ' (%s) ' % self._svc_display_name_))
-            
+
         return res
 
 if __name__=='__main__':

@@ -78,7 +78,7 @@ def check7bit(address):
         return 1
     except:
         return 0
-    
+
 def unquote(address, map=SPECIAL):
     """unquote a quoted address
 
@@ -103,12 +103,12 @@ def validate(address):
 ### Envelope strict rfc821 check
 def getaddr(keyword, arg):
     """strict rfc821 check for envelopes"""
-    address = None 
+    address = None
     options = None
     keylen = len(keyword)
     if arg[:keylen].upper() != keyword:
         return None, 'Bad command syntax'
-    
+
     address = arg[keylen:].strip()
 
     ## Check for non 7bit
@@ -154,7 +154,7 @@ def getaddr(keyword, arg):
         domain = validate(res[1])
         if domain:
             address = '@'.join([address, domain])
-            
+
     return address, options
 
 ### LMTP Client Class
@@ -164,7 +164,7 @@ class LMTP(SMTP):
     this class hacks smtplib's SMTP class into a shape where it will
     successfully pass a message off to Cyrus's LMTP daemon.
     Also adds support for connecting to a unix domain socket (unix platform only)."""
-    
+
     lhlo_resp = None
     def __init__(self, host='', port=0):
         """The constructor"""
@@ -174,7 +174,7 @@ class LMTP(SMTP):
             (code, msg) = self.connect(host, port)
             if code != 220:
                 raise SMTPConnectError(code, msg)
-        
+
     ### TODO 2.x - defaults to localhost?
     def connect(self, host='localhost', port=LMTP_PORT):
         """Connect to a host on a given port.
@@ -200,7 +200,7 @@ class LMTP(SMTP):
 
     def lhlo(self, name='localhost'):
         """ LMTP 'lhlo' command.
-        
+
         Hostname to send for this command defaults to localhost.
         """
         self.putcmd("lhlo",name)
@@ -256,12 +256,11 @@ class LMTPChannel(async_chat):
         self.push('220 %s %s' % (self.__fqdn, server.banner))
         self.set_terminator('\r\n')
         self.__getaddr = getaddr
-            
+
     def push(self, msg):
         """Overrides base class for convenience"""
         async_chat.push(self, msg + '\r\n')
-        
-    
+
     def collect_incoming_data(self, data):
         """Implementation of base class abstract method"""
         self.__line.append(data)
@@ -318,7 +317,7 @@ class LMTPChannel(async_chat):
         """Close the channel and the socket"""
         self.del_channel(self.map)
         self.socket.close()
-                
+
     # LMTP commands
     def lmtp_LHLO(self, arg):
         """ LMTP LHLO Command implementation"""
@@ -417,7 +416,7 @@ class LMTPServer(dispatcher):
             raise UnknownProtocol, localaddr
 
         proto, params = localaddr.split(':', 1)
-        
+
         ### UNIX
         if proto == 'unix':
             if platform == 'win32':
@@ -440,7 +439,7 @@ class LMTPServer(dispatcher):
                 params = int(params)
             except:
                 raise BadPort, params
-            
+
             self.create_socket(AF_INET, SOCK_STREAM)
             self.set_reuse_addr()
             self.bind((proto, params))
@@ -450,7 +449,7 @@ class LMTPServer(dispatcher):
         #from struct import pack
         #self.socket.setsockopt (SOL_SOCKET, SO_RCVTIMEO, pack("ll",5,0))
         #self.socket.setsockopt (SOL_SOCKET, SO_SNDTIMEO, pack("ll",5,0))
-                               
+
         self.localaddr = (proto, params)
         self.addr = (proto, params)
         self.map = { self.socket.fileno(): self }
@@ -473,7 +472,7 @@ class LMTPServer(dispatcher):
     def close_all(self):
         """closes all connections"""
         asyn_close_all(self.map)
-        
+
     def handle_accept(self):
         """handle client connections
         gracefully shutdown if some signal has interrupted self.accept()"""
@@ -483,7 +482,7 @@ class LMTPServer(dispatcher):
             channel.debuglevel = self.debuglevel
             if self.del_hook: channel.__del__ = self.del_hook
         except: pass
-                    
+
     # API for "doing something useful with the message"
     def process_message(self, peer, mailfrom, rcpttos, data):
         """Override this abstract method to handle messages from the client.
@@ -509,7 +508,6 @@ class LMTPServer(dispatcher):
 
         """
         raise NotImplementedError
-
 
 ### SMTP Server stuff
 class SMTPChannel(smtpd_SMTPChannel):
@@ -538,7 +536,7 @@ class SMTPChannel(smtpd_SMTPChannel):
         self.push('220 %s %s' % (self.__fqdn, server.banner))
         self.set_terminator('\r\n')
         self.__getaddr = getaddr
-        
+
     def smtp_MAIL(self, arg):
         """SMTP 'mail' command"""
         address, options = self.__getaddr('FROM:', arg)
@@ -571,7 +569,7 @@ class SMTPChannel(smtpd_SMTPChannel):
         """Close the channel and the socket"""
         self.del_channel(self.map)
         self.socket.close()
-                
+
 class SMTPServer(LMTPServer):
     """Async Server, it handle the connection using SMTPChannel"""
     def handle_accept(self):
@@ -590,12 +588,12 @@ class DebuggingServer(LMTPServer):
         LMTPServer.__init__(self, localaddr)
         ## Set custom banner
         self.banner = "DebuggingServer using " + __version__
-         
+
     def process_message(self, peer, mailfrom, rcpttos, data):
         """Do something with the gathered message"""
         inheaders = 1
         lines = data.split('\n')
-        print '----------- MESSAGE DATA ------------'  
+        print '----------- MESSAGE DATA ------------'
         if peer:
             print "Peer: %s:%d" % peer
         print "Mail from:", mailfrom

@@ -97,12 +97,12 @@ class DEBUGServer:
     def sendmail(self, m_from, m_to, msg):
         """DEBUGServer fake sendmail"""
         print 'DEBUGServer: sendmail from: %s to %s - size %d' % (m_from, m_to, len(msg))
-        return ''  
-        
+        return ''
+
     def close(self):
         """DEBUGServer dummy close"""
         pass
-    
+
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
 CHECKHEADERS = ['from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower()]
 whitelist = []
@@ -133,14 +133,14 @@ class BackendBase:
     """BackendBase Class
 
         This class should be derived to make a specialized Backend class"""
-    
+
     def process(self, data):
         """method to process data
 
         should be implemented when subclassing"""
         del data
         return 0, 433, 'Backend not configured'
-        
+
     def shutdown(self):
         """method to shudown and cleanup the backend
 
@@ -156,7 +156,7 @@ class DebugBackend(BackendBase):
         return 1234, 250, 'Ok'
 
     def shutdown(self): pass
-                 
+
 class Logger:
     """Message Logger class
 
@@ -177,8 +177,8 @@ class Logger:
             self.loglevel = DEBUGLEVELS[config.get('global', 'loglevel').lower()]
         except:
             print 'Bad log level defined'
-            self.loglevel = E_ERR 
-        
+            self.loglevel = E_ERR
+
         try:
             self.logstrtime = config.get('global', 'logstrtime')
         except:
@@ -209,7 +209,7 @@ class Logger:
     def flush(self):
         """flushes the Logger fd to force the write operation"""
         return self.log_fd.flush()
-    
+
     def close(self):
         """closes the Logger fd"""
         try:
@@ -270,7 +270,7 @@ def parse(submsg):
         ct = submsg.dict['content-type']
         dict = {}
         split_hdr('Content-Type', ct, dict)
-        
+
         if submsg.dict.has_key('content-disposition'):
             cd = submsg.dict['content-disposition']
             split_hdr('Content-Disposition', cd, dict)
@@ -310,7 +310,7 @@ def StageHandler(config, stage_type):
             raise BadStageInput, input_class
     except:
         raise BadStageInput
-        
+
     class StageHandler(Thread, input_classes[input_class]):
         """Base class for a StageHandler Backend"""
         def __init__(self, Class, config, stage_type):
@@ -330,7 +330,7 @@ def StageHandler(config, stage_type):
             Class.__init__(self, self.address, self.del_hook)
             self.lock = RLock()
             self.type = stage_type
-            
+
             ## Setup handle_accept Hook
             self._handle_accept = self.handle_accept
             self.handle_accept = self.accept_hook
@@ -347,10 +347,10 @@ def StageHandler(config, stage_type):
             ## Win32 Fixups
             if platform == 'win32':
                 ## No support for poll on win32
-                self.usepoll = 0 
+                self.usepoll = 0
                 ## Bug: hang on close if using psycopg / Not needed if run as service
                 self.setDaemon(main_svc)
-                
+
             try:
                 self.nowait = config.getint('global', 'nowait')
             except:
@@ -360,7 +360,7 @@ def StageHandler(config, stage_type):
                 self.timeout = config.getint('global', 'timeout')
             except:
                 self.timeout = None
-            
+
             ## Init Hashdb to avoid re-archiving
             try:
                 self.hashdb = opendb(config.get(self.type, 'hashdb'), 'c')
@@ -372,10 +372,10 @@ def StageHandler(config, stage_type):
                 self.debuglevel = config.getint(self.type, 'debuglevel')
             except:
                 self.debuglevel = 0
-            
+
             ## Set custom banner
             self.banner = 'Netfarm Archiver [%s] version %s' % (stage_type, __version__)
-            
+
             try:
                 output, address = config.get(stage_type, 'output').split(':', 1)
                 if not output_classes.has_key(output):
@@ -389,7 +389,7 @@ def StageHandler(config, stage_type):
                 self.output_port = int(self.output_port)
             except:
                 raise BadStageOutput, self.output
-                        
+
             ## Backend factory
             self.config = config
             backend_type = self.config.get(stage_type, 'backend')
@@ -428,14 +428,14 @@ def StageHandler(config, stage_type):
                 self.lock.acquire()
                 LOG(E_TRACE, '%s: Done' % self.getName())
             self.close_all()
-                        
+
         def sendmail(self, m_from, m_to, msg, aid=None, mid=None):
             """Rerouting of mails to nexthop (postfix)"""
-            
+
             if msg is None: # E.g. regex has failed
                 LOG(E_ERR, '%s-sendmail: msg is None something went wrong ;(' % self.type)
                 return self.do_exit(443, 'Internal server error')
-            
+
             try:
                 server = self.output(self.output_address, self.output_port)
             except:
@@ -448,7 +448,7 @@ def StageHandler(config, stage_type):
             if m_from == '':
                 m_from = '<>'
 
-            server_reply = {}                    
+            server_reply = {}
 
             ## Here python developers was very funny, if a mail is not delivered to one of recipients
             ## then I have bad recipient list in the return value
@@ -468,7 +468,7 @@ def StageHandler(config, stage_type):
             ## We can get a dict or an integer
             if type(server_reply) == type(0):
                 server_reply = str(server_reply)
-                
+
             if len(server_reply) == 0:
                 okmsg = 'Sendmail Ok'
                 if aid:
@@ -491,7 +491,7 @@ def StageHandler(config, stage_type):
                 else:
                     LOG(E_ERR, '%s-sendmail unknown error: %s' % (self.type, str(server_reply)))
                     return self.do_exit(443, 'Internal server error')
-                
+
                 ## TODO 2.x - find the right way
                 if len(server_reply) == len(m_to):
                     return self.do_exit(443, 'All recipients were rejected by the mailserver')
@@ -517,7 +517,7 @@ def StageHandler(config, stage_type):
             size = len(data)
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
-            
+
             stream = StringIO(data)
             msg = Message(stream)
             aid = msg.get(AID, None)
@@ -535,15 +535,15 @@ def StageHandler(config, stage_type):
             #    mktime(m_date)
             #except:
             #    m_date = None
-            #                
+            #
             #if m_date is None:
             #    LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
             #    m_date = localtime(time())
 
             ## Arrivar date
             m_date = localtime(time())
-                        
-                        
+
+
             del msg,stream
 
             ## Mail needs to be processed
@@ -608,14 +608,14 @@ def StageHandler(config, stage_type):
                     del tb
                     LOG(E_ERR, '%s: Error removing X-Archiver-ID header: %s' % (self.type, str(val)))
             return data
-        
+
         def process_archive(self, peer, sender, recips, data):
             """Archives email meta data using a Backend"""
             global quotatbl
             global whitelist
 
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
-            
+
             size = len(data)
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
@@ -645,20 +645,20 @@ def StageHandler(config, stage_type):
                 m_from = msg.getaddrlist('From')
             except:
                 return self.do_exit(443, 'Error parsing addrlist From: %s' % msg.get('From', None))
-                
+
             ## Extraction of to field
             try:
                 m_to = msg.getaddrlist('To')
             except:
                 return self.do_exit(443, 'Error parsing addrlist To: %s' % msg.get('To', None))
-                
+
             ## whitelist check, from, to and sender (envelope)
             try:
                 check_sender = [parseaddr(sender)]
             except:
                 LOG(E_ERR, '%s: cannot parse %s' % (self.type, sender))
                 check_sender = []
-                            
+
             for addr in m_from+m_to+check_sender:
                 try:
                     base = addr[1].split('@')[0]
@@ -694,8 +694,7 @@ def StageHandler(config, stage_type):
                 m_cc = msg.getaddrlist('Cc')
             except:
                 return self.do_exit(443, 'Error parsing addrlist Cc: %s' % msg.get('Cc', None))
-                
-                
+
             ## Extraction of Subject field
             m_sub = msg.get('Subject', '')
 
@@ -705,14 +704,14 @@ def StageHandler(config, stage_type):
             #    mktime(m_date)
             #except:
             #    m_date = None
-            #    
+            #
             #if m_date is None:
             #    LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
             #    m_date = localtime(time())
 
             ## Arrivar date
             m_date = localtime(time())
-            
+
             m_attach = []
 
             ## If multipart sould be attachment (but not always)
@@ -744,7 +743,7 @@ def StageHandler(config, stage_type):
             if year==0:
                 LOG(E_ERR, '%s: Backend Error: %s' % (self.type, error))
                 return self.do_exit(pid, error)
-                
+
             ## Adding X-Archiver-ID: header
             aid = '%d-%d' % (year, pid)
             data = self.add_aid(data, msg, aid)
@@ -777,7 +776,7 @@ def sig_int_term(signum, frame):
     del signum, frame
     LOG(E_ALWAYS, "[Main] Got SIGINT/SIGTERM")
     isRunning = 0
-    
+
     if len(serverPoll):
         LOG(E_ALWAYS, '[Main] Shutting down stages')
         multiplex(serverPoll, 'finish')
@@ -809,7 +808,7 @@ def do_shutdown(res=0):
 ## Specific Startup on unix
 def unix_startup(config, user=None):
     """ Unix specific startup actions """
-    global LOG        
+    global LOG
     if user:
         try:
             userpw = getpwnam(user)
@@ -828,9 +827,9 @@ def unix_startup(config, user=None):
     except:
         LOG(E_ALWAYS, '[Main] Missing pidfile in config')
         do_shutdown(-4)
-        
+
     locked = 1
-    try:        
+    try:
         pid = int(open(pidfile).read().strip())
         LOG(E_TRACE, '[Main] Lock: Sending signal to the process')
         try:
@@ -838,7 +837,7 @@ def unix_startup(config, user=None):
             LOG(E_ERR, '[Main] Stale Lockfile: Process is alive')
         except:
             LOG(E_ERR, '[Main] Stale Lockfile: Old process is not alive')
-            locked = 0    
+            locked = 0
     except:
         locked = 0
 
@@ -852,11 +851,11 @@ def unix_startup(config, user=None):
             pid = fork()
         except:
             t, val, tb = exc_info()
-            del t                           
+            del t
             print 'Cannot go in background mode', str(val)
 
         if pid: sys_exit(0)
-        
+
         null = open('/dev/null', 'r')
         close(stdin.fileno())
         dup(null.fileno())
@@ -894,7 +893,7 @@ def ServiceStartup(configfile, user=None, debug=None, service_main=0):
     config.read(configfile)
 
     LOG = Logger(debug=debug)
-    
+
     if platform == 'win32':
         user, mypid = win32_startup(config)
     else:
@@ -916,16 +915,16 @@ def ServiceStartup(configfile, user=None, debug=None, service_main=0):
 
     ## Starting up
     LOG(E_INFO, '[Main] Running as user %s pid %s' % (user, mypid))
-    
+
     ## Creating stage sockets
     sections = config.sections()
     if 'archive' in sections:
         serverPoll.append(StageHandler(config, 'archive'))
     if 'storage' in sections:
         serverPoll.append(StageHandler(config, 'storage'))
-    
+
     if len(serverPoll):
-        multiplex(serverPoll, 'start')       
+        multiplex(serverPoll, 'start')
         isRunning = 1
     else:
         LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
@@ -954,7 +953,7 @@ def ServiceStartup(configfile, user=None, debug=None, service_main=0):
     return do_shutdown(0)
 
 ## Main
-if __name__ == '__main__':  
+if __name__ == '__main__':
     if platform == 'win32':
         configfile = 'archiver.ini'
         arglist = 'dc:'
@@ -975,7 +974,7 @@ if __name__ == '__main__':
 
     debug=None
     user=None
-    
+
     for arg in optlist:
         if arg[0] == '-c':
             configfile = arg[1]
