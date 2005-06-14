@@ -264,7 +264,8 @@ class Backend(BackendBase):
         if pid == -1:
             year, pid, result = self.do_query(self.query[1], fetch=1)
 
-        if pid == 0:
+        ## Error with DB Connection
+        if year == 0:
             return year, pid, result
 
         qs = ''
