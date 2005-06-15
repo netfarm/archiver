@@ -680,7 +680,7 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s: cannot parse %s' % (self.type, sender))
                 check_sender = []
 
-            for addr in m_from+m_to+check_sender:
+            for addr in m_from + m_to + check_sender:
                 try:
                     base = addr[1].split('@')[0]
                 except:
@@ -720,7 +720,7 @@ def StageHandler(config, stage_type):
             m_sub = msg.get('Subject', '')
 
             ## Date extraction
-            m_data = None
+            m_date = None
             if self.datefromemail:
                 m_date = msg.getdate('Date')
                 try:
