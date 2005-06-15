@@ -258,6 +258,10 @@ class Backend(BackendBase):
         @param data: is a dict containing all needed stuff
         @return: the result of do_query"""
 
+        ## Safety check
+        if (len(data['m_from']) == 0) or ((len(data['m_to']) + len(data['m_cc'])) == 0):
+            return 0, 443, 'Integrity error missing From/To/Cc'
+
         year, pid, result = self.do_query(self.query[0], fetch=1, autorecon=1)
 
         ## There is no pid for current year, so we create a new entry in the table
@@ -280,7 +284,7 @@ class Backend(BackendBase):
                 slog = sender[1]
                 sdom = sender[1]
 
-            for dest in data['m_to']+data['m_cc']:
+            for dest in data['m_to'] + data['m_cc']:
                 try:
                     dlog, ddom = dest[1].split('@',1)
                 except:

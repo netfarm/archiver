@@ -361,6 +361,11 @@ def StageHandler(config, stage_type):
             except:
                 self.timeout = None
 
+            try:
+                self.datefromemail = config.getint('global', 'datefromemail')
+            except:
+                self.datefromemail = 0
+
             ## Init Hashdb to avoid re-archiving
             try:
                 self.hashdb = opendb(config.get(self.type, 'hashdb'), 'c')
@@ -530,19 +535,17 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s: Message has yet been processed' % self.type)
                 return self.sendmail(sender, recips, data, aid, mid)
 
-            #m_date = msg.getdate('Date')
-            #try:
-            #    mktime(m_date)
-            #except:
-            #    m_date = None
-            #
-            #if m_date is None:
-            #    LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
-            #    m_date = localtime(time())
-
-            ## Arrivar date
-            m_date = localtime(time())
-
+            ## Date extraction
+            m_date = None
+            if self.datefromemail:
+                m_date = msg.getdate('Date')
+                try:
+                    mktime(m_date)
+                except:
+                    m_date = None
+            
+            if m_date is None:
+                m_date = localtime(time())
 
             del msg,stream
 
@@ -646,11 +649,29 @@ def StageHandler(config, stage_type):
             except:
                 return self.do_exit(443, 'Error parsing addrlist From: %s' % msg.get('From', None))
 
+            ## Empty from field use sender
+            if len(m_from) == 0:
+                LOG(E_ERR, '%s: no From header in mail using sender' % self.type)
+                try:
+                    m_from = parseaddr(sender)
+                except:
+                    return self.do_exit(552, 'Mail has not suitable From/Sender') 
+
             ## Extraction of to field
             try:
                 m_to = msg.getaddrlist('To')
             except:
                 return self.do_exit(443, 'Error parsing addrlist To: %s' % msg.get('To', None))
+
+            ## Empty to field use recips
+            if len(m_to) == 0:
+                LOG(E_ERR, '%s: no To header in mail using recipients' % self.type)
+                for recipient in recips:
+                    try:
+                        m_to += [parseaddr(recipient)]
+                    except: pass
+                if len(m_to) == 0:
+                    return self.do_exit(552, 'Mail has not suitable To/Recipient')
 
             ## whitelist check, from, to and sender (envelope)
             try:
@@ -699,18 +720,16 @@ def StageHandler(config, stage_type):
             m_sub = msg.get('Subject', '')
 
             ## Date extraction
-            #m_date = msg.getdate('Date')
-            #try:
-            #    mktime(m_date)
-            #except:
-            #    m_date = None
-            #
-            #if m_date is None:
-            #    LOG(E_ERR, '%s: Invalid date format using current time' % self.type)
-            #    m_date = localtime(time())
-
-            ## Arrivar date
-            m_date = localtime(time())
+            m_data = None
+            if self.datefromemail:
+                m_date = msg.getdate('Date')
+                try:
+                    mktime(m_date)
+                except:
+                    m_date = None
+            
+            if m_date is None:
+                m_date = localtime(time())
 
             m_attach = []
 
