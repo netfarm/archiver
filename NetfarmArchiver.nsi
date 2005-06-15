@@ -28,7 +28,7 @@ InstallDir "$PROGRAMFILES\NMA"
 InstallDirRegKey HKLM "Software\Netfarm\Netfarm Mail Archiver" "InstallPath"
 
 SetCompress auto
-!packhdr tmp.dat "upx\upx -9 tmp.dat"
+!packhdr tmp.dat "upx --best tmp.dat"
 SetDateSave on
 SetDatablockOptimize on
 CRCCheck on
