@@ -235,6 +235,7 @@ class Backend(BackendBase):
             else:
                 return BACKEND_OK
         except:
+            self.connection.rollback()
             self.LOG(E_ERR, 'Rdbms Backend: query fails')
             if autorecon:
                 self.LOG(E_ERR, 'Rdbms Backend: Trying to reopen DB Connection')
@@ -270,6 +271,7 @@ class Backend(BackendBase):
 
         ## Error with DB Connection
         if year == 0:
+            self.connection.rollback()
             return year, pid, result
 
         qs = ''
