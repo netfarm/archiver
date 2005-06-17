@@ -66,3 +66,4 @@ TODO 2.x:
 - Consider to converting doc to epydoc, it's better than doxygen with python since it's native
 - Convert some fields in lowercase before archiving?
 - Update rdbms driver to psycopg2
+- Fix: Error parsing to/cc: Undisclosed-Recipient
