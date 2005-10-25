@@ -33,9 +33,7 @@ __all__ = [ 'BackendBase',
             'platform' ] # import once
 
 from sys import platform
-if platform == 'win32':
-    from win32api import GetCurrentProcessId
-else:
+if platform != 'win32':
     from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
     from os import fork, kill, seteuid, setegid, getuid
     from pwd import getpwnam, getpwuid
@@ -43,8 +41,8 @@ from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from time import strftime, time, localtime, sleep, mktime
 from sys import argv, exc_info, stdin, stdout, stderr
 from sys import exit as sys_exit
-from os import getpid, unlink, chmod, access, F_OK, R_OK
-from os import close, dup
+from os import unlink, chmod, access, F_OK, R_OK
+from os import close, dup, getpid
 from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
@@ -81,8 +79,8 @@ MINSIZE=8
 
 ### Globals
 LOG = None
-config = None
 quotatbl = None
+pidfile = None
 isRunning = 0
 main_svc = 0
 serverPoll = []
@@ -104,7 +102,7 @@ class DEBUGServer:
         pass
 
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
-CHECKHEADERS = ['from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower()]
+CHECKHEADERS = [ 'from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower() ]
 whitelist = []
 input_classes  = { 'lmtp': LMTPServer, 'smtp': SMTPServer }
 output_classes = { 'lmtp': LMTP, 'smtp': SMTP, 'debug': DEBUGServer }
@@ -161,9 +159,8 @@ class Logger:
     """Message Logger class
 
     Used to log message to a file"""
-    def __init__(self, debug=None):
+    def __init__(self, config=None, debug=None):
         """The constructor"""
-        global config
         if debug:
             self.log_fd = stdout
         else:
@@ -219,7 +216,6 @@ class Logger:
 ### Helpers
 mime_head = re.compile('=\\?(.*?)\\?(\w)\\?([^? \t\n]+)\\?=', re.IGNORECASE)
 encodings = {'q': mime_decode, 'b': decodestring }
-
 
 def mime_decode_header(line):
     """workaound to python mime_decode_header
@@ -292,13 +288,13 @@ def dupe_check(headers):
     check = []
     for hdr in headers:
         hdr = hdr.strip()
-        if hdr.find(':')==-1: continue
-        key, value = hdr.split(':', 1)
+        if hdr.find(':') == -1: continue
+        key = hdr.split(':', 1)[0]
         key = key.lower()
         if key in check and key in CHECKHEADERS:
-            return 1
+            return key
         check.append(key)
-    return 0
+    return None
 
 def StageHandler(config, stage_type):
     """Meta class for a StageHandler Backend"""
@@ -614,8 +610,7 @@ def StageHandler(config, stage_type):
 
         def process_archive(self, peer, sender, recips, data):
             """Archives email meta data using a Backend"""
-            global quotatbl
-            global whitelist
+            global quotatbl, whitelist
 
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
@@ -638,10 +633,11 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s: Message has yet assigned year/pid pair, only adding header' % self.type)
                 return self.sendmail(sender, recips, self.add_aid(data, msg, aid), aid, mid)
 
-            ## Check for duplicate headers
-            if dupe_check(msg.headers):
-                LOG(E_ERR, '%s: Invalid syntax in headers' % self.type)
-                return self.do_exit(552, 'Invalid Syntax in headers')
+            ## Check for duplicate header
+            dupe = dupe_check(msg.headers)
+            if dupe is not None:
+                LOG(E_ERR, '%s: Duplicate header %s' % (self.type, dupe))
+                return self.do_exit(552, 'Duplicate header %s', dupe)
 
             ## Extraction of from field
             try:
@@ -804,15 +800,15 @@ def sig_int_term(signum, frame):
 
 def do_shutdown(res=0):
     """Archiver system shutdown"""
-    global quotatbl, main_svc
+    global quotatbl, main_svc, pidfile
 
     ## Close quota hash handler
     if quotatbl:
         quotatbl.close()
 
-    if platform != 'win32':
+    if platform != 'win32' and pidfile is not None:
         try:
-            unlink(config.get('global', 'pidfile'))
+            unlink(pidfile)
         except: pass
 
     LOG(E_ALWAYS, '[Main] Waiting for child threads')
@@ -825,9 +821,9 @@ def do_shutdown(res=0):
         return res
 
 ## Specific Startup on unix
-def unix_startup(config, user=None):
+def unix_startup(config, user=None, debug=None):
     """ Unix specific startup actions """
-    global LOG
+    global LOG, pidfile
     if user:
         try:
             userpw = getpwnam(user)
@@ -835,7 +831,7 @@ def unix_startup(config, user=None):
             seteuid(userpw[2])
         except:
             t, val, tb = exc_info()
-            del t
+            del t, tb
             print 'Cannot swith to user', user, str(val)
             sys_exit(-2)
     else:
@@ -895,14 +891,14 @@ def unix_startup(config, user=None):
     return user, mypid
 
 ## Specific Startup on win32
-def win32_startup(config, user=None):
+def win32_startup():
     """ Win32 specific startup actions"""
-    return 'Windows User', GetCurrentProcessId()
+    return 'Windows User', getpid()
 
 ## Start the Archiver Service
 def ServiceStartup(configfile, user=None, debug=None, service_main=0):
     """ Archiver Service Main """
-    global LOG, config, isRunning, main_svc
+    global LOG, quotatbl, whitelist, isRunning, main_svc
     main_svc = service_main
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
@@ -911,12 +907,12 @@ def ServiceStartup(configfile, user=None, debug=None, service_main=0):
     config = ConfigParser()
     config.read(configfile)
 
-    LOG = Logger(debug=debug)
+    LOG = Logger(config=config, debug=debug)
 
     if platform == 'win32':
-        user, mypid = win32_startup(config)
+        user, mypid = win32_startup()
     else:
-        user, mypid = unix_startup(config, user=user)
+        user, mypid = unix_startup(config, user=user, debug=debug)
 
     ## Quota table
     try:

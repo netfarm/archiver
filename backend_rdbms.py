@@ -203,7 +203,7 @@ class Backend(BackendBase):
             self.connection.autocommit(0)
         except:
             t, val, tb = exc_info()
-            del tb
+            del t, tb
             msg = format_msg(val)
             self.LOG(E_ERR, 'Rdbms Backend: cannot disable autocommit on the DB connection: ' + msg)
             self.close()

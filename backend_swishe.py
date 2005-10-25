@@ -56,7 +56,7 @@ class Backend(Backend_filesystem):
         self.backend_init(ar_globals)
         del ar_globals
 
-    def init_archive(self, ar_globals):
+    def init_archive(self, unused):
         """Init Swish-e Archive Backend Class"""
         try:
             pidgenfile = self.config.get(self.type, 'pidgendb')
@@ -95,7 +95,7 @@ class Backend(Backend_filesystem):
             self.lock.close()
             self.lock = None
 
-    def process_archive(self, data):
+    def process_archive(self, unused):
         """Process archive
 
         Generates new year/pid pair and update the db with the new value"""
@@ -104,11 +104,11 @@ class Backend(Backend_filesystem):
         newpid = 1
         if self.pidgen.has_key(dbindex):
             try:
-                newpid = long(pidgen[dbindex])
+                newpid = long(self.pidgen[dbindex])
             except:
                 self.LOG(E_ERR, 'Swish-e Backend (%s): error getting pid, restarting from 1' % self.type)
 
-        self.pidgen[dbindex] = str(newpid+1)
+        self.pidgen[dbindex] = str(newpid + 1)
         return year, newpid, 'OK'
 
     def process_storage(self, data):

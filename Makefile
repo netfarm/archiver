@@ -28,7 +28,7 @@ cleandoc:
 distclean: clean cleandoc
 
 pycheck:
-	pychecker backend_*.py archiver.py lmtp.py
+	pychecker backend_*.py archiver.py lmtp.py || true
 
 doxygen:
 	@echo doxygen-ing...
