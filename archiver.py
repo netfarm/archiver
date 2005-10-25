@@ -630,7 +630,7 @@ def StageHandler(config, stage_type):
             if mid is not None and self.hashdb.has_key(mid):
                 LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
                 aid=self.hashdb[mid]
-                LOG(E_ERR, '%s: Message has yet assigned year/pid pair, only adding header' % self.type)
+                LOG(E_TRACE, '%s: Message has yet assigned year/pid pair, only adding header' % self.type)
                 return self.sendmail(sender, recips, self.add_aid(data, msg, aid), aid, mid)
 
             ## Check for duplicate header
