@@ -1,2 +1,35 @@
-error: uncaptured python exception, closing channel <SMTPChannel connected at 8275804> (exceptions.TypeError:__call__() takes exactly 3 arguments (2 given) [/usr/lib/python2.1/asyncore.py|poll3|172] [/usr/lib/python2.1/asyncore.py|handle_read_event|386] [/usr/lib/python2.1/asynchat.py|handle_read|130] [/usr/lib/python2.1/smtpd.py|found_terminator|171] [/usr/lib/archiver/archiver.py|process_archive|633] [./backend_rdbms.py|process_archive|210])
+<--
+error: uncaptured python exception, closing channel <lmtp.SMTPChannel connected 127.0.0.1:41880 at 0x82e6bcc>
+(exceptions.AttributeError:Backend instance has no attribute 'connection'
+ [/usr/lib/python2.3/asyncore.py|readwrite|86]
+ [/usr/lib/python2.3/asyncore.py|handle_read_event|390]
+ [/usr/lib/python2.3/asynchat.py|handle_read|136]
+ [/usr/lib/python2.3/smtpd.py|found_terminator|176]
+-->
+wtf?
 
+<--
+error: uncaptured python exception, closing channel <lmtp.SMTPChannel connected 127.0.0.1:41880 at 0x82e6bcc>
+(exceptions.AttributeError:Backend instance has no attribute 'connection'
+ [/usr/lib/python2.3/asyncore.py|readwrite|86]
+ [/usr/lib/python2.3/asyncore.py|handle_read_event|390]
+ [/usr/lib/python2.3/asynchat.py|handle_read|136]
+ [/usr/lib/python2.3/smtpd.py|found_terminator|176]
+ [/usr/lib/archiver/archiver.py|process_archive|761]
+ [./backend_rdbms.py|process_archive|283])
+-->
+Done, but impossible Backend instance should always have attribute 'connection'
+since it's an instance attribute
+
+<--
+Exception exceptions.AssertionError: <exceptions.AssertionError instance at 0x40260a4c>
+ in <bound method StageHandler.del_hook of <StageHandler(archive, stopped)>> ignored
+-->
+No clue :(
+
+<--
+error: uncaptured python exception, closing channel <lmtp.SMTPChannel connected 127.0.0.1:52486 at 0xb7c3452c>
+ (socket.error:(9, 'Bad file descriptor')
+[/usr/lib/python2.3/asynchat.py|initiate_send|218] [/usr/lib/python2.3/asyncore.py|send|337])
+-->
+Untrapped event in asyncore?
