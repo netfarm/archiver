@@ -26,6 +26,7 @@ Exception exceptions.AssertionError: <exceptions.AssertionError instance at 0x40
  in <bound method StageHandler.del_hook of <StageHandler(archive, stopped)>> ignored
 -->
 No clue :(
+Raised when not carefully waiting threads
 
 <--
 error: uncaptured python exception, closing channel <lmtp.SMTPChannel connected 127.0.0.1:52486 at 0xb7c3452c>
