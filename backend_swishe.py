@@ -54,7 +54,6 @@ class Backend(Backend_filesystem):
             raise StorageTypeNotSupported, self.type
 
         self.backend_init(ar_globals)
-        del ar_globals
 
     def init_archive(self, unused):
         """Init Swish-e Archive Backend Class"""

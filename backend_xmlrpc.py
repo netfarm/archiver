@@ -85,7 +85,6 @@ class Backend(BackendBase):
         self.client = client(self.hostname, self.port)
         self.LOG(E_ALWAYS, 'XmlRpc Backend (%s) at %s port %d url is %s' %
                  (self.type, self.hostname, self.port, self.url))
-        del ar_globals
 
     def process(self, data):
         """Archive backend proces

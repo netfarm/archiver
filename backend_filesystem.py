@@ -50,7 +50,6 @@ class Backend(BackendBase):
             raise BadStorageDir, self.storagedir
 
         self.LOG(E_ALWAYS, 'Filesystem Backend (%s) at %s ' % (self.type, self.storagedir))
-        del ar_globals
 
     ## Gets mailpath and filename
     def get_paths(self, data):

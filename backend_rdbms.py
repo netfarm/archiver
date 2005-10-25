@@ -169,7 +169,6 @@ class Backend(BackendBase):
             self.connect()
         except: pass
         self.LOG(E_ALWAYS, 'Rdbms Backend (%s) %s at %s' % (self.type, driver, host))
-        del ar_globals
 
     def close(self):
         """closes the cursor and the connection"""
@@ -309,10 +308,17 @@ class Backend(BackendBase):
 
         res = self.do_query(qs)
         if res != BACKEND_OK:
-            self.connection.rollback()
+            try:
+                self.connection.rollback()
+            except:
+                self.LOG(E_ERR, 'Rdbms Backend: Rollback failed')
             return res
 
-        self.connection.commit()
+        try:
+            self.connection.commit()
+        except:
+            self.LOG(E_ERR, 'Rdbms Backend: Commit failed')
+
         return year, pid, result
 
     def process_storage(self, data):
