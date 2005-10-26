@@ -404,7 +404,7 @@ class LMTPChannel(async_chat):
 
 class LMTPServer(dispatcher):
     """LMTPServer dispatcher class implemented as asyncore dispatcher"""
-    def __init__(self, localaddr, del_hook=None):
+    def __init__(self, localaddr, del_hook=None, timeout=None):
         """The Constructor
 
         Creates the listening socket"""
@@ -426,9 +426,13 @@ class LMTPServer(dispatcher):
             except:
                 pass
             self.create_socket(AF_UNIX, SOCK_STREAM)
+
+            if getattr(self.socket, 'settimeout', None) is not None:
+                self.socket.settimeout(timeout)
+                 
             self.bind(params)
             try:
-                chmod(params, 0777)
+                chmod(params, 0777) ## FIXME hardcoded permissions ??
             except: pass
             ## Make asyncore __repr__ happy
             proto += ':' + params
@@ -439,16 +443,13 @@ class LMTPServer(dispatcher):
                 params = int(params)
             except:
                 raise BadPort, params
-
             self.create_socket(AF_INET, SOCK_STREAM)
             self.set_reuse_addr()
-            self.bind((proto, params))
 
-        ### Not working ;(
-        #from socket import SOL_SOCKET, SO_RCVTIMEO, SO_SNDTIMEO
-        #from struct import pack
-        #self.socket.setsockopt (SOL_SOCKET, SO_RCVTIMEO, pack("ll",5,0))
-        #self.socket.setsockopt (SOL_SOCKET, SO_SNDTIMEO, pack("ll",5,0))
+            if getattr(self.socket, 'settimeout', None) is not None:
+                self.socket.settimeout(timeout)
+
+            self.bind((proto, params))
 
         self.localaddr = (proto, params)
         self.addr = (proto, params)

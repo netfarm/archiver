@@ -18,7 +18,7 @@ TODO 2.x:
 - [done unix socket/asyncore is buggy] Use lmtp or smtp for listening services (integrates with amavisd-new)
 - [done] Multiple from support
 - [done] Rework configurations system - use ConfigParses
-- [done] Implement backends (fixme: set timeout - config?)
+- [done] Implement backends
 - [done] Make a class object for logger
 - [done] Move common backend exceptions class in archiver.py and import
 - [done] SQL tables are in dir sql/ - postfix confs are in dir postfix/
@@ -51,6 +51,7 @@ TODO 2.x:
 - [partially done] check if unmimified stuff can be inserted in the rdbms (check/convert char encoding?)
 - [done] extract sender if no from is in header, extract to from recipents if not to is in header
 - [done] datefromemail controls the date field, set it to 1 to use date extraction from email
+- [done] timeout option is honored if using python2.3 or greater
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package

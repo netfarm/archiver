@@ -321,9 +321,14 @@ def StageHandler(config, stage_type):
             except:
                 raise BadStageInput
 
+            try:
+                timeout = config.getfloat('global', 'timeout')
+            except:
+                timeout = None
+
             Thread.__init__(self)
             ## Init LMTPServer Class
-            Class.__init__(self, self.address, self.del_hook)
+            Class.__init__(self, self.address, self.del_hook, timeout=timeout)
             self.lock = RLock()
             self.type = stage_type
 
@@ -351,11 +356,6 @@ def StageHandler(config, stage_type):
                 self.nowait = config.getint('global', 'nowait')
             except:
                 self.nowait = 0
-
-            try:
-                self.timeout = config.getint('global', 'timeout')
-            except:
-                self.timeout = None
 
             try:
                 self.datefromemail = config.getint('global', 'datefromemail')
