@@ -199,7 +199,7 @@ class Backend(BackendBase):
 
         ## Try to disable autocommit
         try:
-            self.connection.autocommit(0)
+            self.connection.autocommit(0) # FIXME - API is changed
         except:
             t, val, tb = exc_info()
             del t, tb
