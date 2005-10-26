@@ -57,6 +57,12 @@ from getopt import getopt
 
 import re
 
+### Python2.1 misses True/False
+if getattr(__builtins__, 'True', None) is None:
+    True = 1
+if getattr(__builtins__, 'False', None) is None:
+    False = 0
+
 ### Debug levels
 E_NONE=0
 E_ERR=1
@@ -81,7 +87,7 @@ MINSIZE=8
 LOG = None
 quotatbl = None
 pidfile = None
-isRunning = 0
+isRunning = False
 main_svc = 0
 serverPoll = []
 ##
@@ -271,7 +277,7 @@ def parse(submsg):
             cd = submsg.dict['content-disposition']
             split_hdr('Content-Disposition', cd, dict)
 
-        ### Hmm nice clients, filename or name?
+        ### Hmm nice job clients, filename or name?
         if not dict.has_key('name') and dict.has_key('filename'):
             dict['name'] = dict['filename']
 
@@ -493,12 +499,12 @@ def StageHandler(config, stage_type):
                     LOG(E_ERR, '%s-sendmail unknown error: %s' % (self.type, str(server_reply)))
                     return self.do_exit(443, 'Internal server error')
 
-                ## TODO 2.x - find the right way
+                ## FIXME - find the right way
                 if len(server_reply) == len(m_to):
                     return self.do_exit(443, 'All recipients were rejected by the mailserver')
 
                 LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
-                ## TODO 2.x - It's ok to do this??
+                ## FIXME - I'm right doing this?
                 del self.hashdb[mid]
                 self.hashdb.sync()
                 return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
@@ -543,7 +549,7 @@ def StageHandler(config, stage_type):
             if m_date is None:
                 m_date = localtime(time())
 
-            del msg,stream
+            del msg, stream
 
             ## Mail needs to be processed
             if aid:
@@ -687,7 +693,7 @@ def StageHandler(config, stage_type):
                     return self.sendmail(sender, recips, self.remove_aid(data, msg))
 
             ## Size check
-            ## TODO 2.x check if it works
+            ## FIXME: check if it works
             if quotatbl:
                 for addr in m_from:
                     try:
@@ -788,9 +794,10 @@ def sig_int_term(signum, frame):
 
     Terminates the StageHandler threads"""
     global isRunning
-    del signum, frame
+    del signum, frame # Not needed avoid pychecker warning
+    if not isRunning: return # already called
     LOG(E_ALWAYS, "[Main] Got SIGINT/SIGTERM")
-    isRunning = 0
+    isRunning = False
 
     if len(serverPoll):
         LOG(E_ALWAYS, '[Main] Shutting down stages')
@@ -940,7 +947,7 @@ def ServiceStartup(configfile, user=None, debug=None, service_main=0):
 
     if len(serverPoll):
         multiplex(serverPoll, 'start')
-        isRunning = 1
+        isRunning = True
     else:
         LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
         return do_shutdown(-7)

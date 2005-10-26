@@ -175,7 +175,6 @@ class LMTP(SMTP):
             if code != 220:
                 raise SMTPConnectError(code, msg)
 
-    ### TODO 2.x - defaults to localhost?
     def connect(self, host='localhost', port=LMTP_PORT):
         """Connect to a host on a given port.
 

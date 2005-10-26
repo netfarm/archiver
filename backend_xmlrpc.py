@@ -38,7 +38,6 @@ class BadUrlSyntax(Exception):
     """BadUrlSyntax Bad url syntax in config file"""
     pass
 
-## TODO 2.x this method is 100% ok??
 def decode_url(url):
     """Parses url from config file
     @param url: is like http://username:password@host:8080/InsertMail/insert
