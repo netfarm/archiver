@@ -52,20 +52,18 @@ TODO 2.x:
 - [done] extract sender if no from is in header, extract to from recipents if not to is in header
 - [done] datefromemail controls the date field, set it to 1 to use date extraction from email
 - [done] timeout option is honored if using python2.3 or greater
+- [done] explicit depends on python >= 2.3 for socket timeout, True/False
+         and bug in rfc822 address parsing of python2.1
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package
 - Make README.txt
-- Add timeout to connections (using sigalarm? this can break threads?)
-  python2.3 has a working timeout using setsockopt
 - Unmimify attachment filenames?
 - Unmimify email addresses?
 - Add an info about unix socket + asyncore problem
 - Update postfix templates
 - Check -> sendmail: Some of recipients rejected / mail is expunged from hashdb, correct?
 - Update structure.txt: stage to stage passthrough - maybe usefull on win32 
-- Add to readme docs about possible problems with bugged rfc822 python2.1 module
-  - Add dependancy to python > 2.1
 - Consider to converting doc to epydoc, it's better than doxygen with python since it's native
 - Convert some fields in lowercase before archiving?
 - Update rdbms driver to psycopg2

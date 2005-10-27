@@ -26,11 +26,11 @@
 ## TODO: does PIPELINING is server "transparent"?
 ## TODO: Add PureProxy as in smtpd.py ??
 
-from sys import platform
+from sys import platform, hexversion
 if platform != 'win32':
     from socket import AF_UNIX
 from asynchat import async_chat, fifo
-from asyncore import loop,dispatcher
+from asyncore import loop, dispatcher
 from asyncore import close_all as asyn_close_all
 from socket import gethostbyaddr, gethostbyname, gethostname
 from socket import socket, AF_INET, SOCK_STREAM
@@ -41,15 +41,18 @@ from time import time, ctime
 from os import unlink, chmod
 import re
 
-__all__ = ["LMTPServer", "SMTPServer", "DebuggingServer"]
+__all__ = [ 'LMTPServer', 'SMTPServer', 'DebuggingServer']
 __version__ = 'Python LMTP Server version 0.1'
 
-NEWLINE = '\n'
-QUOTE='\\'
+if hexversion < 0x02030000:
+    raise Exception, 'Upgrade to python 2.3, this program needs python >= 2.3'
+
+NEWLINE     = '\n'
+QUOTE       = '\\'
 EMPTYSTRING = ''
-SPECIAL='<>()[]," '
-LMTP_PORT=2003
-DEBUG=1
+SPECIAL     = '<>()[]," '
+LMTP_PORT   = 2003
+DEBUG       = 1
 
 re_rel  = re.compile(r"<@.*:(.*)>(.*)")
 re_addr = re.compile(r"<(.*)>(.*)")
@@ -75,9 +78,9 @@ def check7bit(address):
     """
     try:
         address.encode('ascii')
-        return 1
+        return True
     except:
-        return 0
+        return False
 
 def unquote(address, map=SPECIAL):
     """unquote a quoted address
@@ -85,8 +88,8 @@ def unquote(address, map=SPECIAL):
     @param address: is the address to uquote
     @param map: is the special quoted char list
     @return: address unquoted"""
-    for c in map+'\\':
-        address = c.join(address.split(QUOTE+c))
+    for c in map + '\\':
+        address = c.join(address.split(QUOTE + c))
     return address
 
 def validate(address):
@@ -95,7 +98,7 @@ def validate(address):
     @return: the valid and unquoted address if ok or None"""
     for i in range(len(address)):
         if address[i] in SPECIAL:
-            if i==0 or address[i-1] != '\\':
+            if i == 0 or address[i-1] != '\\':
                 return None
     address = unquote(address)
     return address
@@ -132,14 +135,14 @@ def getaddr(keyword, arg):
     options = options.strip()
 
     ## <> Null return path
-    if len(address)<3:
+    if len(address) < 3:
         return '', None
 
     if address.count('@')>1:
         return None, 'Too many @'
 
     ## Workaround to 'email@example.com'
-    if address[0]=='\'' and address[-1]=='\'':
+    if address[0] == '\'' and address[-1] == '\'':
         address = address[1:-1]
 
     res = address.split('@', 1)
@@ -178,7 +181,7 @@ class LMTP(SMTP):
     def connect(self, host='localhost', port=LMTP_PORT):
         """Connect to a host on a given port.
 
-        If the hostname starts with `unix:', the remainder of the string
+        If the hostname starts with 'unix:', the remainder of the string
         is assumed to be a unix domain socket.
         """
         if host[:5] == 'unix:':
@@ -202,10 +205,10 @@ class LMTP(SMTP):
 
         Hostname to send for this command defaults to localhost.
         """
-        self.putcmd("lhlo",name)
+        self.putcmd('lhlo',name)
         (code, msg) = self.getreply()
         if code == -1 and len(msg) == 0:
-            raise SMTPServerDisconnected("Server not connected")
+            raise SMTPServerDisconnected('Server not connected')
         self.lhlo_resp = msg
         self.ehlo_resp = msg
         if code != 250:
@@ -217,12 +220,12 @@ class LMTP(SMTP):
         for each in resp:
             m = re_feat.match(each)
             if m:
-                feature = m.group("feature").lower()
-                params = m.string[m.end("feature"):].strip()
+                feature = m.group('feature').lower()
+                params = m.string[m.end('feature'):].strip()
                 self.lmtp_features[feature] = params
         return (code, msg)
 
-    ## "re-route" non lmtp commands
+    ## 're-route' non lmtp commands
     helo = lhlo
     ehlo = lhlo
 
@@ -230,7 +233,7 @@ class LMTP(SMTP):
 class LMTPChannel(async_chat):
     """LMTPChannel for communications with clients
 
-    A subclass of async_chat, ideal to handle "chat" like protocols"""
+    A subclass of async_chat, ideal to handle 'chat' like protocols"""
     COMMAND = 0
     DATA = 1
     def __init__(self, server, conn, addr, map=None):
@@ -282,7 +285,7 @@ class LMTPChannel(async_chat):
                 arg = line[i+1:].strip()
             method = getattr(self, 'lmtp_' + command, None)
             if not method:
-                self.push('502 5.5.1 Error: command "%s" not implemented' % command)
+                self.push('502 5.5.1 Error: command %s not implemented' % command)
                 return
             method(arg)
             return
@@ -403,7 +406,7 @@ class LMTPChannel(async_chat):
 
 class LMTPServer(dispatcher):
     """LMTPServer dispatcher class implemented as asyncore dispatcher"""
-    def __init__(self, localaddr, del_hook=None, timeout=None):
+    def __init__(self, localaddr, del_hook = None, timeout = None):
         """The Constructor
 
         Creates the listening socket"""
@@ -411,7 +414,7 @@ class LMTPServer(dispatcher):
         self.loop = loop
         self.banner = __version__
         self.del_hook = del_hook
-        if localaddr.find(':')==-1:
+        if localaddr.find(':') == -1:
             raise UnknownProtocol, localaddr
 
         proto, params = localaddr.split(':', 1)
@@ -425,10 +428,7 @@ class LMTPServer(dispatcher):
             except:
                 pass
             self.create_socket(AF_UNIX, SOCK_STREAM)
-
-            if getattr(self.socket, 'settimeout', None) is not None:
-                self.socket.settimeout(timeout)
-                 
+            self.socket.settimeout(timeout)
             self.bind(params)
             try:
                 chmod(params, 0777) ## FIXME hardcoded permissions ??
@@ -444,10 +444,7 @@ class LMTPServer(dispatcher):
                 raise BadPort, params
             self.create_socket(AF_INET, SOCK_STREAM)
             self.set_reuse_addr()
-
-            if getattr(self.socket, 'settimeout', None) is not None:
-                self.socket.settimeout(timeout)
-
+            self.socket.settimeout(timeout)
             self.bind((proto, params))
 
         self.localaddr = (proto, params)
@@ -595,9 +592,9 @@ class DebuggingServer(LMTPServer):
         lines = data.split('\n')
         print '----------- MESSAGE DATA ------------'
         if peer:
-            print "Peer: %s:%d" % peer
-        print "Mail from:", mailfrom
-        print "Recipients:", ','.join(rcpttos)
+            print 'Peer: %s:%d' % peer
+        print 'Mail from:', mailfrom
+        print 'Recipients:', ','.join(rcpttos)
         print '---------- MESSAGE HEADERS ----------'
         for line in lines:
             if inheaders and not line:

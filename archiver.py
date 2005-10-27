@@ -32,7 +32,7 @@ __all__ = [ 'BackendBase',
             'E_ALWAYS',
             'platform' ] # import once
 
-from sys import platform
+from sys import platform, hexversion
 if platform != 'win32':
     from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
     from os import fork, kill, seteuid, setegid, getuid
@@ -54,21 +54,20 @@ from base64 import decodestring
 from threading import Thread, RLock
 from cStringIO import StringIO
 from getopt import getopt
+from types import IntType, DictType, StringType
 
 import re
 
-### Python2.1 misses True/False
-if getattr(__builtins__, 'True', None) is None:
-    True = 1
-if getattr(__builtins__, 'False', None) is None:
-    False = 0
+### Mandatory python >= 2.3 dependancy
+if hexversion < 0x02030000:
+    raise Exception, 'Upgrade to python 2.3, this program needs python >= 2.3'
 
 ### Debug levels
-E_NONE=0
-E_ERR=1
-E_INFO=2
-E_TRACE=3
-E_ALWAYS=-1
+E_NONE   =  0
+E_ERR    =  1
+E_INFO   =  2
+E_TRACE  =  3
+E_ALWAYS = -1
 DEBUGLEVELS = { 'none'  : E_NONE,
                 'error' : E_ERR,
                 'info'  : E_INFO,
@@ -76,19 +75,19 @@ DEBUGLEVELS = { 'none'  : E_NONE,
                 'always': E_ALWAYS }
 
 ### Usefull constants
-NL='\n'
-AID='X-Archiver-ID'
-STARTOFBODY=NL+NL
-GRANULARITY=10
+NL = '\n'
+AID = 'X-Archiver-ID'
+STARTOFBODY = NL + NL
+GRANULARITY = 10
 BACKEND_OK = (1, 200, 'Ok')
-MINSIZE=8
+MINSIZE = 8
 
 ### Globals
 LOG = None
 quotatbl = None
 pidfile = None
 isRunning = False
-main_svc = 0
+main_svc = False
 serverPoll = []
 ##
 
@@ -165,7 +164,7 @@ class Logger:
     """Message Logger class
 
     Used to log message to a file"""
-    def __init__(self, config=None, debug=None):
+    def __init__(self, config=None, debug=False):
         """The constructor"""
         if debug:
             self.log_fd = stdout
@@ -245,12 +244,12 @@ def mime_decode_header(line):
 
     return newline + line[pos:]
 
-def split_hdr(key, ct_string, dict):
+def split_hdr(key, ct_string, hd):
     """Headers splitting
 
     extract file name and content-disposition"""
     if ct_string.find(';') != -1:
-        dict[key], params = ct_string.split(';', 1)
+        hd[key], params = ct_string.split(';', 1)
         params = params.strip().split(';')
         for par in params:
             par = par.strip()
@@ -260,9 +259,9 @@ def split_hdr(key, ct_string, dict):
                 pvalue = pvalue.strip()
                 if pvalue[0] == '"' and pvalue[-1] == '"' and pvalue !='""':
                     pvalue = pvalue[1:-1]
-                dict[pname] = pvalue
+                hd[pname] = pvalue
     else:
-        dict[key] = ct_string
+        hd[key] = ct_string
 
 
 def parse(submsg):
@@ -270,21 +269,21 @@ def parse(submsg):
     found = None
     if submsg.dict.has_key('content-type'):
         ct = submsg.dict['content-type']
-        dict = {}
-        split_hdr('Content-Type', ct, dict)
+        hd = {}
+        split_hdr('Content-Type', ct, hd)
 
         if submsg.dict.has_key('content-disposition'):
             cd = submsg.dict['content-disposition']
-            split_hdr('Content-Disposition', cd, dict)
+            split_hdr('Content-Disposition', cd, hd)
 
         ### Hmm nice job clients, filename or name?
-        if not dict.has_key('name') and dict.has_key('filename'):
-            dict['name'] = dict['filename']
+        if not hd.has_key('name') and hd.has_key('filename'):
+            hd['name'] = hd['filename']
 
         ### Found an attachment
-        if dict.has_key('name'):
-            LOG(E_TRACE, 'Found attachment: ' + dict['name'] + ' - Enctype: ' + submsg.getencoding())
-            found = { 'name': dict['name'], 'content-type': dict['Content-Type'] }
+        if hd.has_key('name'):
+            LOG(E_TRACE, 'Found attachment: ' + hd['name'] + ' - Enctype: ' + submsg.getencoding())
+            found = { 'name': hd['name'], 'content-type': hd['Content-Type'] }
     return found
 
 def dupe_check(headers):
@@ -343,9 +342,9 @@ def StageHandler(config, stage_type):
             self.handle_accept = self.accept_hook
 
             try:
-                self.usepoll = config.getint('global', 'usepoll')
+                self.usepoll = config.getboolean('global', 'usepoll')
             except:
-                self.usepoll = 1
+                self.usepoll = True
             try:
                 self.granularity = config.getint('global', 'granularity')
             except:
@@ -354,19 +353,19 @@ def StageHandler(config, stage_type):
             ## Win32 Fixups
             if platform == 'win32':
                 ## No support for poll on win32
-                self.usepoll = 0
+                self.usepoll = False
                 ## Bug: hang on close if using psycopg / Not needed if run as service
                 self.setDaemon(main_svc)
 
             try:
-                self.nowait = config.getint('global', 'nowait')
+                self.nowait = config.getboolean('global', 'nowait')
             except:
-                self.nowait = 0
+                self.nowait = False
 
             try:
-                self.datefromemail = config.getint('global', 'datefromemail')
+                self.datefromemail = config.getboolean('global', 'datefromemail')
             except:
-                self.datefromemail = 0
+                self.datefromemail = False
 
             ## Init Hashdb to avoid re-archiving
             try:
@@ -428,7 +427,7 @@ def StageHandler(config, stage_type):
             LOG(E_TRACE, '%s: Connection closed: Releasing lock' % self.type)
             self.lock.release()
 
-        def finish(self, force=0):
+        def finish(self, force=True):
             """shutdown the Archiver system waiting for unterminated jobs"""
             if not self.nowait and not force:
                 LOG(E_TRACE, '%s: Waiting thread job...' % self.getName())
@@ -473,7 +472,7 @@ def StageHandler(config, stage_type):
             except: pass
 
             ## We can get a dict or an integer
-            if type(server_reply) == type(0):
+            if type(server_reply) == IntType:
                 server_reply = str(server_reply)
 
             if len(server_reply) == 0:
@@ -488,11 +487,11 @@ def StageHandler(config, stage_type):
 
                 return self.do_exit(250, okmsg, 200)
             else:
-                if type(server_reply)==type({}):
+                if type(server_reply) == DictType:
                     for rcpt in server_reply.keys():
                         res = server_reply[rcpt]
                         LOG(E_ERR, '%s-sendmail error: %s - %s' % (self.type, res[0], res[1]))
-                elif type(server_reply)==type(''):
+                elif type(server_reply) == StringType:
                     LOG(E_ERR, '%s-sendmail reply error, server returned error code %s' % (self.type, server_reply))
                     return self.do_exit(443, 'Server returned code ' + server_reply)
                 else:
@@ -566,7 +565,7 @@ def StageHandler(config, stage_type):
                 stuff = { 'mail': data, 'year': year, 'pid': pid, 'date': m_date }
                 LOG(E_TRACE, '%s: year is %d - pid is %d' % (self.type, year, pid))
                 status, code, msg = self.backend.process(stuff)
-                if status==0:
+                if status == 0:
                     LOG(E_ERR, '%s: process failed %s' % (self.type, msg))
                     return self.do_exit(code, msg)
 
@@ -752,16 +751,16 @@ def StageHandler(config, stage_type):
                 except:
                     LOG(E_ERR, '%s: Error in multipart splitting' % self.type)
 
-            dict = {}
-            dict['m_from'] = m_from
-            dict['m_to'] = m_to
-            dict['m_cc'] = m_cc
-            dict['m_sub'] = m_sub
-            dict['m_date'] = m_date
-            dict['m_attach'] = m_attach
+            bargs = {}
+            bargs['m_from'] = m_from
+            bargs['m_to'] = m_to
+            bargs['m_cc'] = m_cc
+            bargs['m_sub'] = m_sub
+            bargs['m_date'] = m_date
+            bargs['m_attach'] = m_attach
 
-            year, pid, error = self.backend.process(dict)
-            if year==0:
+            year, pid, error = self.backend.process(bargs)
+            if year == 0:
                 LOG(E_ERR, '%s: Backend Error: %s' % (self.type, error))
                 return self.do_exit(pid, error)
 
@@ -805,7 +804,7 @@ def sig_int_term(signum, frame):
         multiplex(serverPoll, 'shutdown_backend')
         multiplex(serverPoll, 'stop')
 
-def do_shutdown(res=0):
+def do_shutdown(res = 0):
     """Archiver system shutdown"""
     global quotatbl, main_svc, pidfile
 
@@ -828,7 +827,7 @@ def do_shutdown(res=0):
         return res
 
 ## Specific Startup on unix
-def unix_startup(config, user=None, debug=None):
+def unix_startup(config, user=None, debug=False):
     """ Unix specific startup actions """
     global LOG, pidfile
     if user:
@@ -903,7 +902,7 @@ def win32_startup():
     return 'Windows User', getpid()
 
 ## Start the Archiver Service
-def ServiceStartup(configfile, user=None, debug=None, service_main=0):
+def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     """ Archiver Service Main """
     global LOG, quotatbl, whitelist, isRunning, main_svc
     main_svc = service_main
@@ -980,12 +979,12 @@ if __name__ == '__main__':
         configfile = 'archiver.ini'
         arglist = 'dc:'
     else:
-        configfile='/etc/archiver.conf'
+        configfile = '/etc/archiver.conf'
         arglist = 'dc:u:'
 
     try:
         optlist, args = getopt(argv[1:], arglist)
-        if len(args)>0:
+        if len(args) > 0:
             raise Exception
     except:
         usage = 'Usage [%s] [-d] [-c alternate_config]' % argv[0]
@@ -994,18 +993,18 @@ if __name__ == '__main__':
         print usage
         sys_exit(-1)
 
-    debug=None
-    user=None
+    debug = False
+    user = None
 
     for arg in optlist:
         if arg[0] == '-c':
             configfile = arg[1]
             continue
         if arg[0] == '-d':
-            debug=1
+            debug = True
             continue
         if arg[0] == '-u':
-            user=arg[1]
+            user = arg[1]
             continue
 
-    ServiceStartup(configfile, user, debug, 1)
+    ServiceStartup(configfile, user, debug, True)
