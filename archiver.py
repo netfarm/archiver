@@ -838,10 +838,6 @@ def do_shutdown(res = 0):
     """Archiver system shutdown"""
     global LOG, quotatbl, main_svc, pidfile
 
-    ## Close quota hash handler
-    if quotatbl is not None:
-        quotatbl.close()
-
     if platform != 'win32' and pidfile is not None:
         try:
             unlink(pidfile)
@@ -952,7 +948,7 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
 
     ## Quota table
     try:
-        quotatbl = opendb(config.get('global', 'quotafile'), 'r')
+        quotatbl = config.get('global', 'quotafile')
         LOG(E_ALWAYS, '[Main] Quotacheck is enabled')
     except:
         quotatbl = None
