@@ -75,19 +75,19 @@ DEBUGLEVELS = { 'none'  : E_NONE,
                 'always': E_ALWAYS }
 
 ### Usefull constants
-NL = '\n'
-AID = 'X-Archiver-ID'
+NL          = '\n'
+AID         = 'X-Archiver-ID'
 STARTOFBODY = NL + NL
 GRANULARITY = 10
-BACKEND_OK = (1, 200, 'Ok')
-MINSIZE = 8
+BACKEND_OK  = (1, 200, 'Ok')
+MINSIZE     = 8
 
 ### Globals
-LOG = None
-quotatbl = None
-pidfile = None
-isRunning = False
-main_svc = False
+LOG        = None
+quotatbl   = None
+pidfile    = None
+isRunning  = False
+main_svc   = False
 serverPoll = []
 ##
 
@@ -155,6 +155,7 @@ class DebugBackend(BackendBase):
 
     used only to debug the process"""
     def process(self, data):
+        global LOG
         LOG(E_INFO, "[DebugBackend]: %s" % str(data))
         return 1234, 250, 'Ok'
 
@@ -184,7 +185,7 @@ class Logger:
         try:
             self.logstrtime = config.get('global', 'logstrtime')
         except:
-            self.logstrtime = "%m/%d/%Y %H:%M:%S"
+            self.logstrtime = '%m/%d/%Y %H:%M:%S'
 
     def __call__(self, level, msg):
         """Default call method for Logger class
@@ -194,7 +195,7 @@ class Logger:
         if self.loglevel < level:
             return
         timestr = strftime(self.logstrtime, localtime(time()))
-        outstr = "%s %s\n" % (timestr, msg)
+        outstr = '%s %s\n' % (timestr, msg)
         try:
             self.log_fd.write(outstr)
             self.log_fd.flush()
@@ -220,7 +221,7 @@ class Logger:
 
 ### Helpers
 mime_head = re.compile('=\\?(.*?)\\?(\w)\\?([^? \t\n]+)\\?=', re.IGNORECASE)
-encodings = {'q': mime_decode, 'b': decodestring }
+encodings = { 'q': mime_decode, 'b': decodestring }
 
 def mime_decode_header(line):
     """workaound to python mime_decode_header
@@ -232,7 +233,7 @@ def mime_decode_header(line):
         res = mime_head.search(line, pos)
         if res is None:
             break
-        #charset = res.group(1)
+        # charset = res.group(1)
         enctype = res.group(2).lower()
         match = res.group(3)
         if encodings.has_key(enctype):
@@ -266,6 +267,7 @@ def split_hdr(key, ct_string, hd):
 
 def parse(submsg):
     """Parse a sub message"""
+    global LOG
     found = None
     if submsg.dict.has_key('content-type'):
         ct = submsg.dict['content-type']
@@ -301,6 +303,32 @@ def dupe_check(headers):
         check.append(key)
     return None
 
+## FIXME: Implement default quota
+def quota_check(sender, size):
+    ## Format of the quotafile hash
+    ## key: email -> login@domain
+    ## value: quota limit in kbytes
+    global LOG, quotatbl
+    try:
+        qcheck = opendb.open(quotatbl, 'r')
+    except:
+        LOG(E_ERR, 'Cannot open quota file ' + str(quotatbl))
+        return True
+
+    try:
+        csize = long(quotatbl[sender])
+    except:
+        csize = 0
+
+    qcheck.close()
+
+    if csize > 0:
+        LOG(E_TRACE, 'Checking quota for %s - %d kb' % (sender, csize))
+        if size > csize:
+            LOG(E_ERR, 'Sender quota execeded by %s' % sender)
+            return False
+    return True
+
 def StageHandler(config, stage_type):
     """Meta class for a StageHandler Backend"""
 ##### Class Wrapper - Start
@@ -316,7 +344,7 @@ def StageHandler(config, stage_type):
         """Base class for a StageHandler Backend"""
         def __init__(self, Class, config, stage_type):
             """StageHandler Constructor"""
-            global main_svc
+            global LOG, main_svc
             self.process_message = getattr(self, 'process_' + stage_type, None)
             if self.process_message is None:
                 raise BadStageTypeError, stage_type
@@ -400,7 +428,7 @@ def StageHandler(config, stage_type):
             self.config = config
             backend_type = self.config.get(stage_type, 'backend')
             try:
-                backend = getattr(__import__("backend_%s" % backend_type, globals(), locals(), []), 'Backend')
+                backend = getattr(__import__('backend_%s' % backend_type, globals(), locals(), []), 'Backend')
             except ImportError:
                 t, val, tb = exc_info()
                 del tb
@@ -411,6 +439,7 @@ def StageHandler(config, stage_type):
             self.shutdown_backend = self.backend.shutdown
 
         def run(self):
+            global LOG
             self.setName(self.type)
             LOG(E_ALWAYS, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
             self.loop(self.granularity, self.usepoll, self.map)
@@ -418,17 +447,20 @@ def StageHandler(config, stage_type):
         ## Hooks to gracefully stop threads
         def accept_hook(self):
             """hook called when the server accepts an incoming connection"""
+            global LOG
             LOG(E_TRACE, '%s: I got a connection: Acquiring lock' % self.type)
             self.lock.acquire()
             return self._handle_accept()
 
         def del_hook(self):
             """hook called when a connection is terminated"""
+            global LOG
             LOG(E_TRACE, '%s: Connection closed: Releasing lock' % self.type)
             self.lock.release()
 
         def finish(self, force=True):
             """shutdown the Archiver system waiting for unterminated jobs"""
+            global LOG
             if not self.nowait and not force:
                 LOG(E_TRACE, '%s: Waiting thread job...' % self.getName())
                 self.lock.acquire()
@@ -437,6 +469,7 @@ def StageHandler(config, stage_type):
 
         def sendmail(self, m_from, m_to, msg, aid=None, mid=None):
             """Rerouting of mails to nexthop (postfix)"""
+            global LOG
 
             if msg is None: # E.g. regex has failed
                 LOG(E_ERR, '%s-sendmail: msg is None something went wrong ;(' % self.type)
@@ -515,11 +548,12 @@ def StageHandler(config, stage_type):
             self.del_channel()
             if not extcode:
                 extcode = code
-            excode =  '.'.join([x for x in str(extcode)])
+            excode = '.'.join([x for x in str(extcode)])
             return ' '.join([str(code), excode, msg])
 
         def process_storage(self, peer, sender, recips, data):
             """Stores the archived email using a Backend"""
+            global LOG
             size = len(data)
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
@@ -532,7 +566,7 @@ def StageHandler(config, stage_type):
             mid = msg.get('message-id', '')
             LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
             if self.hashdb.has_key(mid):
-                aid=self.hashdb[mid]
+                aid = self.hashdb[mid]
                 LOG(E_ERR, '%s: Message has yet been processed' % self.type)
                 return self.sendmail(sender, recips, data, aid, mid)
 
@@ -571,7 +605,7 @@ def StageHandler(config, stage_type):
 
                 ## Inserting in hashdb
                 LOG(E_TRACE, '%s: inserting %s msg in hashdb' % (self.type, aid))
-                self.hashdb[mid]=aid
+                self.hashdb[mid] = aid
                 self.hashdb.sync()
                 LOG(E_TRACE, '%s: backend worked fine' % self.type)
             else:
@@ -582,6 +616,7 @@ def StageHandler(config, stage_type):
             return self.sendmail(sender, recips, data, aid, mid)
 
         def add_aid(self, data, msg, aid):
+            global LOG
             archiverid = '%s: %s' % (AID, aid)
             LOG(E_INFO, '%s: %s' % (self.type, archiverid))
             archiverid = archiverid + NL
@@ -602,6 +637,7 @@ def StageHandler(config, stage_type):
             return data
 
         def remove_aid(self, data, msg):
+            global LOG
             if msg.get(AID, None):
                 LOG(E_TRACE, '%s: This mail should not have X-Archiver-ID header, removing it' % self.type)
                 try:
@@ -615,7 +651,7 @@ def StageHandler(config, stage_type):
 
         def process_archive(self, peer, sender, recips, data):
             """Archives email meta data using a Backend"""
-            global quotatbl, whitelist
+            global LOG, quotatbl, whitelist
 
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
@@ -634,7 +670,7 @@ def StageHandler(config, stage_type):
             mid = msg.get('message-id', None)
             if mid is not None and self.hashdb.has_key(mid):
                 LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
-                aid=self.hashdb[mid]
+                aid = self.hashdb[mid]
                 LOG(E_TRACE, '%s: Message has yet assigned year/pid pair, only adding header' % self.type)
                 return self.sendmail(sender, recips, self.add_aid(data, msg, aid), aid, mid)
 
@@ -644,13 +680,13 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s: Duplicate header %s' % (self.type, dupe))
                 return self.do_exit(552, 'Duplicate header %s', dupe)
 
-            ## Extraction of from field
+            ## Extraction of From field
             try:
                 m_from = msg.getaddrlist('From')
             except:
                 return self.do_exit(443, 'Error parsing addrlist From: %s' % msg.get('From', None))
 
-            ## Empty from field use sender
+            ## Empty From field use sender
             if len(m_from) == 0:
                 LOG(E_ERR, '%s: no From header in mail using sender' % self.type)
                 try:
@@ -658,13 +694,13 @@ def StageHandler(config, stage_type):
                 except:
                     return self.do_exit(552, 'Mail has not suitable From/Sender') 
 
-            ## Extraction of to field
+            ## Extraction of To field
             try:
                 m_to = msg.getaddrlist('To')
             except:
                 return self.do_exit(443, 'Error parsing addrlist To: %s' % msg.get('To', None))
 
-            ## Empty to field use recips
+            ## Empty To field use recipients
             if len(m_to) == 0:
                 LOG(E_ERR, '%s: no To header in mail using recipients' % self.type)
                 for recipient in recips:
@@ -674,7 +710,7 @@ def StageHandler(config, stage_type):
                 if len(m_to) == 0:
                     return self.do_exit(552, 'Mail has not suitable To/Recipient')
 
-            ## whitelist check, from, to and sender (envelope)
+            ## whitelist check: From, To and Sender (envelope)
             try:
                 check_sender = [parseaddr(sender)]
             except:
@@ -691,27 +727,21 @@ def StageHandler(config, stage_type):
                     LOG(E_INFO, '%s: Mail to: %s in whitelist, not archived' % (self.type, base))
                     return self.sendmail(sender, recips, self.remove_aid(data, msg))
 
-            ## Size check
-            ## FIXME: check if it works
-            if quotatbl:
+            ## Sender size limit check
+            ## FIXME: values are cached - so I need to reopen the file
+            if quotatbl is not None:
                 for addr in m_from:
                     try:
-                        checkfrom = addr[1].split('@')[0]
+                        checkfrom = addr[1]
                     except:
-                        checkfrom = addr
-                    LOG(E_TRACE, '%s: Checking quota for %s' % (self.type, checkfrom))
+                        checkfrom = str(addr)
+                    checkfrom = checkfrom.lower()
+                    ## from bytes to kb
                     size = size >> 10
+                    if quota_check(checkfrom, size):
+                        return self.do_exit(523, 'Sender quota execeded')
 
-                    try:
-                        csize = int(quotatbl[checkfrom])
-                    except:
-                        csize = 0
-
-                    if csize and size > csize:
-                        LOG(E_ERR, '%s: Send quota execeded from: %s' % (self.type, checkfrom))
-                        return self.do_exit(523, 'Send quota execeded')
-
-            ## Extraction of cc field
+            ## Extraction of Cc field
             try:
                 m_cc = msg.getaddrlist('Cc')
             except:
@@ -740,11 +770,11 @@ def StageHandler(config, stage_type):
                 if m_parse is not None:
                     m_attach.append(m_parse)
             else:
-                file = MultiFile(stream)
-                file.push(msg.getparam('boundary'))
+                filepart = MultiFile(stream)
+                filepart.push(msg.getparam('boundary'))
                 try:
-                    while file.next():
-                        submsg = Message(file)
+                    while filepart.next():
+                        submsg = Message(filepart)
                         subpart = parse(submsg)
                         if subpart is not None:
                             m_attach.append(subpart)
@@ -792,7 +822,7 @@ def sig_int_term(signum, frame):
     """Handler for SIGINT and SIGTERM signals
 
     Terminates the StageHandler threads"""
-    global isRunning
+    global LOG, isRunning
     del signum, frame # Not needed avoid pychecker warning
     if not isRunning: return # already called
     LOG(E_ALWAYS, "[Main] Got SIGINT/SIGTERM")
@@ -806,10 +836,10 @@ def sig_int_term(signum, frame):
 
 def do_shutdown(res = 0):
     """Archiver system shutdown"""
-    global quotatbl, main_svc, pidfile
+    global LOG, quotatbl, main_svc, pidfile
 
     ## Close quota hash handler
-    if quotatbl:
+    if quotatbl is not None:
         quotatbl.close()
 
     if platform != 'win32' and pidfile is not None:
@@ -923,7 +953,7 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     ## Quota table
     try:
         quotatbl = opendb(config.get('global', 'quotafile'), 'r')
-        LOG(E_TRACE, '[Main] Quotacheck is enabled')
+        LOG(E_ALWAYS, '[Main] Quotacheck is enabled')
     except:
         quotatbl = None
 
