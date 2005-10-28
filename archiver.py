@@ -310,9 +310,11 @@ def quota_check(sender, size):
     ## value: quota limit in kbytes
     global LOG, quotatbl
     try:
-        qcheck = opendb.open(quotatbl, 'r')
+        qcheck = opendb(quotatbl, 'r')
     except:
-        LOG(E_ERR, 'Cannot open quota file ' + str(quotatbl))
+        t, val, tb = exc_info()
+        del t, tb
+        LOG(E_ERR, 'Cannot open quota file %s - %s' % (quotatbl, val))
         return True
 
     try:
