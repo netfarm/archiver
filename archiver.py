@@ -316,7 +316,7 @@ def quota_check(sender, size):
         return True
 
     try:
-        csize = long(quotatbl[sender])
+        csize = long(qcheck[sender])
     except:
         csize = 0
 
@@ -728,7 +728,7 @@ def StageHandler(config, stage_type):
                     checkfrom = checkfrom.lower()
                     ## from bytes to kb
                     size = size >> 10
-                    if quota_check(checkfrom, size):
+                    if not quota_check(checkfrom, size):
                         return self.do_exit(422, 'Sender quota execeded')
 
             ## Extraction of Cc field
