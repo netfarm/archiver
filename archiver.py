@@ -155,7 +155,6 @@ class DebugBackend(BackendBase):
 
     used only to debug the process"""
     def process(self, data):
-        global LOG
         LOG(E_INFO, "[DebugBackend]: %s" % str(data))
         return 1234, 250, 'Ok'
 
@@ -267,7 +266,6 @@ def split_hdr(key, ct_string, hd):
 
 def parse(submsg):
     """Parse a sub message"""
-    global LOG
     found = None
     if submsg.dict.has_key('content-type'):
         ct = submsg.dict['content-type']
@@ -308,7 +306,7 @@ def quota_check(sender, size):
     ## Format of the quotafile hash
     ## key: email -> login@domain
     ## value: quota limit in kbytes
-    global LOG, quotatbl
+    global quotatbl
     try:
         qcheck = opendb(quotatbl, 'r')
     except:
@@ -441,7 +439,6 @@ def StageHandler(config, stage_type):
             self.shutdown_backend = self.backend.shutdown
 
         def run(self):
-            global LOG
             self.setName(self.type)
             LOG(E_ALWAYS, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
             self.loop(self.granularity, self.usepoll, self.map)
@@ -449,20 +446,17 @@ def StageHandler(config, stage_type):
         ## Hooks to gracefully stop threads
         def accept_hook(self):
             """hook called when the server accepts an incoming connection"""
-            global LOG
             LOG(E_TRACE, '%s: I got a connection: Acquiring lock' % self.type)
             self.lock.acquire()
             return self._handle_accept()
 
         def del_hook(self):
             """hook called when a connection is terminated"""
-            global LOG
             LOG(E_TRACE, '%s: Connection closed: Releasing lock' % self.type)
             self.lock.release()
 
         def finish(self, force=True):
             """shutdown the Archiver system waiting for unterminated jobs"""
-            global LOG
             if not self.nowait and not force:
                 LOG(E_TRACE, '%s: Waiting thread job...' % self.getName())
                 self.lock.acquire()
@@ -471,8 +465,6 @@ def StageHandler(config, stage_type):
 
         def sendmail(self, m_from, m_to, msg, aid=None, mid=None):
             """Rerouting of mails to nexthop (postfix)"""
-            global LOG
-
             if msg is None: # E.g. regex has failed
                 LOG(E_ERR, '%s-sendmail: msg is None something went wrong ;(' % self.type)
                 return self.do_exit(443, 'Internal server error')
@@ -555,7 +547,6 @@ def StageHandler(config, stage_type):
 
         def process_storage(self, peer, sender, recips, data):
             """Stores the archived email using a Backend"""
-            global LOG
             size = len(data)
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
@@ -618,7 +609,6 @@ def StageHandler(config, stage_type):
             return self.sendmail(sender, recips, data, aid, mid)
 
         def add_aid(self, data, msg, aid):
-            global LOG
             archiverid = '%s: %s' % (AID, aid)
             LOG(E_INFO, '%s: %s' % (self.type, archiverid))
             archiverid = archiverid + NL
@@ -639,7 +629,6 @@ def StageHandler(config, stage_type):
             return data
 
         def remove_aid(self, data, msg):
-            global LOG
             if msg.get(AID, None):
                 LOG(E_TRACE, '%s: This mail should not have X-Archiver-ID header, removing it' % self.type)
                 try:
@@ -653,8 +642,7 @@ def StageHandler(config, stage_type):
 
         def process_archive(self, peer, sender, recips, data):
             """Archives email meta data using a Backend"""
-            global LOG, quotatbl, whitelist
-
+            global quotatbl, whitelist
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
             size = len(data)
@@ -741,7 +729,7 @@ def StageHandler(config, stage_type):
                     ## from bytes to kb
                     size = size >> 10
                     if quota_check(checkfrom, size):
-                        return self.do_exit(523, 'Sender quota execeded')
+                        return self.do_exit(422, 'Sender quota execeded')
 
             ## Extraction of Cc field
             try:
@@ -824,7 +812,7 @@ def sig_int_term(signum, frame):
     """Handler for SIGINT and SIGTERM signals
 
     Terminates the StageHandler threads"""
-    global LOG, isRunning
+    global isRunning
     del signum, frame # Not needed avoid pychecker warning
     if not isRunning: return # already called
     LOG(E_ALWAYS, "[Main] Got SIGINT/SIGTERM")
@@ -838,7 +826,7 @@ def sig_int_term(signum, frame):
 
 def do_shutdown(res = 0):
     """Archiver system shutdown"""
-    global LOG, quotatbl, main_svc, pidfile
+    global quotatbl, main_svc, pidfile
 
     if platform != 'win32' and pidfile is not None:
         try:
