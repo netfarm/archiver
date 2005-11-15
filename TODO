@@ -70,3 +70,4 @@ TODO 2.x:
 - Fix: Error parsing to/cc: Undisclosed-Recipient
 - Skip spam tagged mail
 - Check init script if the archiver is yet launched, pidfile is overwritten/removed ??
+- use chdir('/') on daemonize ??
