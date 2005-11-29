@@ -71,3 +71,5 @@ TODO 2.x:
 - Skip spam tagged mail
 - Check init script if the archiver is yet launched, pidfile is overwritten/removed ??
 - use chdir('/') on daemonize ??
+- implement timed reload of quota hash depending on modified timestamp
+  to avoid reloading each check
