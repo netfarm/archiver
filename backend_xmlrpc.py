@@ -3,8 +3,8 @@
 #
 # Netfarm Mail Archiver - release 2
 #
-# Copyright (C) 2005 Gianluigi Tiesi <sherpya@netfarm.it>
-# Copyright (C) 2005 NetFarm S.r.l.  [http://www.netfarm.it]
+# Copyright (C) 2005-2006 Gianluigi Tiesi <sherpya@netfarm.it>
+# Copyright (C) 2005-2006 NetFarm S.r.l.  [http://www.netfarm.it]
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
@@ -18,7 +18,7 @@
 # ======================================================================
 ## @file backend_xmlrpc.py
 ## XMLrpc Storage and Archive Backend
-## TODO tcp connection remain active
+## TODO keepalive?
 
 __doc__ = '''Netfarm Archiver - release 2.0.0 - XmlRpc backend'''
 __version__ = '2.0.0'

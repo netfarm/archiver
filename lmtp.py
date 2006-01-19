@@ -5,8 +5,8 @@
 # SMTP Server using same routines
 # - Some code (server) taken form smtpd.py, shipped with python
 # - Base code (client) taken from spamcheck.py (c) James Henstridg
-# Copyright (C) 2005 Gianluigi Tiesi <sherpya@netfarm.it>
-# Copyright (C) 2005 NetFarm S.r.l.  [http://www.netfarm.it]
+# Copyright (C) 2005-2006 Gianluigi Tiesi <sherpya@netfarm.it>
+# Copyright (C) 2005-2006 NetFarm S.r.l.  [http://www.netfarm.it]
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
