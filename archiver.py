@@ -668,7 +668,7 @@ def StageHandler(config, stage_type):
             dupe = dupe_check(msg.headers)
             if dupe is not None:
                 LOG(E_ERR, '%s: Duplicate header %s' % (self.type, dupe))
-                return self.do_exit(552, 'Duplicate header %s', dupe)
+                return self.do_exit(552, 'Duplicate header %s' % dupe)
 
             ## Extraction of From field
             try:
