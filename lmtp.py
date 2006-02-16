@@ -181,7 +181,7 @@ class LMTP(SMTP):
     def connect(self, host='localhost', port=LMTP_PORT):
         """Connect to a host on a given port.
 
-        If the hostname starts with 'unix:', the remainder of the string
+        If the hostname starts with 'unix:', the string
         is assumed to be a unix domain socket.
         """
         if host[:5] == 'unix:':
