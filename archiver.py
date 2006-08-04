@@ -35,7 +35,7 @@ __all__ = [ 'BackendBase',
 from sys import platform, hexversion
 if platform != 'win32':
     from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
-    from os import fork, kill, seteuid, setegid, getuid
+    from os import fork, kill, seteuid, setegid, getuid, chdir
     from pwd import getpwnam, getpwuid
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from time import strftime, time, localtime, sleep, mktime
@@ -893,6 +893,7 @@ def unix_startup(config, user=None, debug=False):
 
         if pid: sys_exit(0)
 
+        chdir('/')
         null = open('/dev/null', 'r')
         close(stdin.fileno())
         dup(null.fileno())

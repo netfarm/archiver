@@ -1,6 +1,6 @@
 BUGS
-- not 7bit header mail are trashed (it should be ok since, they aren't rfc compliant)
-- bcc mails (no recipients) are trashed - possible fix: postfix 2 can add:
+- emails with non 7bit headers are trashed (it should be ok since, they aren't rfc compliant)
+- bcc mails (no recipients) are trashed (now archived using envelops) - possible fix: postfix 2 can add:
   Delivered-To: header with envelope address, but this will slow down the mail system
 - unix sockets and asyncore are not friends, you should use only tcp sockets
 - thread interlock stuff sometime doesn't work, i.e. if lock check is enabled
@@ -54,6 +54,7 @@ TODO 2.x:
 - [done] timeout option is honored if using python2.3 or greater
 - [done] explicit depends on python >= 2.3 for socket timeout, True/False
          and bug in rfc822 address parsing of python2.1
+- [done] use chdir('/') on daemonize ??
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package
@@ -68,8 +69,7 @@ TODO 2.x:
 - Convert some fields in lowercase before archiving?
 - Update rdbms driver to psycopg2
 - Fix: Error parsing to/cc: Undisclosed-Recipient
-- Skip spam tagged mail
-- Check init script if the archiver is yet launched, pidfile is overwritten/removed ??
-- use chdir('/') on daemonize ??
+- Option to Skip spam tagged mail
+- Check init script if the archiver is already launched, pidfile is overwritten/removed ??
 - implement timed reload of quota hash depending on modified timestamp
   to avoid reloading each check
