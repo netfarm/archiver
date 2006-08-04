@@ -439,13 +439,16 @@ class LMTPServer(dispatcher):
         ### TCP
         else:
             try:
-                params = int(params)
+                port = int(params)
             except:
-                raise BadPort, params
+                port = 0
+
+            if port == 0: raise BadPort, params
             self.create_socket(AF_INET, SOCK_STREAM)
             self.set_reuse_addr()
             self.socket.settimeout(timeout)
-            self.bind((proto, params))
+            self.bind((proto, port))
+            params = port
 
         self.localaddr = (proto, params)
         self.addr = (proto, params)

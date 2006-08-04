@@ -63,14 +63,20 @@ class Backend(BackendBase):
         mailpath, filename = self.get_paths(data)
 
         ## First check integrity
+        error = None
         if not access(mailpath, F_OK | R_OK | W_OK):
+            error = 'No access to mailpath'
             try:
                 makedirs(mailpath, 0700)
+                error = None
             except:
                 t, val, tb = exc_info()
                 del tb
+                error = '%s: %s' % (t, val)
                 self.LOG(E_ERR, 'Filesystem Backend: Cannot create storage directory: ' + str(val))
-                return 0, 443, '%s: %s' % (t, val)
+
+        if error is not None:
+            return 0, 443, error
 
         try:
             fd = open(filename, 'wb')

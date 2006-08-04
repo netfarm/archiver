@@ -83,6 +83,8 @@ BACKEND_OK  = (1, 200, 'Ok')
 MINSIZE     = 8
 
 ### Globals
+global LOG, quotatbl, pidfile, isRunning, main_svc, serverPoll
+
 LOG        = None
 quotatbl   = None
 pidfile    = None
@@ -306,14 +308,15 @@ def quota_check(sender, size):
     ## Format of the quotafile hash
     ## key: email -> login@domain
     ## value: quota limit in kbytes
-    global quotatbl
     try:
         qcheck = opendb(quotatbl, 'r')
     except:
         t, val, tb = exc_info()
         del t, tb
         LOG(E_ERR, 'Cannot open quota file %s - %s' % (quotatbl, val))
-        return True
+        qcheck = None
+
+    if qcheck is None: return True # ignore
 
     try:
         csize = long(qcheck[sender])
@@ -335,16 +338,16 @@ def StageHandler(config, stage_type):
     ### I need class type before __init__
     try:
         input_class = config.get(stage_type, 'input').split(':', 1)[0]
-        if not input_classes.has_key(input_class):
-            raise BadStageInput, input_class
     except:
-        raise BadStageInput
+        input_class = 'invalid or missing input in stage %s' %  stage_type
 
+    if not input_classes.has_key(input_class):
+        raise BadStageInput, input_class
+    
     class StageHandler(Thread, input_classes[input_class]):
         """Base class for a StageHandler Backend"""
         def __init__(self, Class, config, stage_type):
             """StageHandler Constructor"""
-            global LOG, main_svc
             self.process_message = getattr(self, 'process_' + stage_type, None)
             if self.process_message is None:
                 raise BadStageTypeError, stage_type
@@ -412,10 +415,11 @@ def StageHandler(config, stage_type):
 
             try:
                 output, address = config.get(stage_type, 'output').split(':', 1)
-                if not output_classes.has_key(output):
-                    raise BadStageOutput, output
             except:
-                raise BadStageOutput
+                output = 'invalid or missing output in stage %s' % stage_type
+
+            if not output_classes.has_key(output):
+                raise BadStageOutput, output
 
             self.output = output_classes[output]
             try:
@@ -642,7 +646,6 @@ def StageHandler(config, stage_type):
 
         def process_archive(self, peer, sender, recips, data):
             """Archives email meta data using a Backend"""
-            global quotatbl, whitelist
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
             size = len(data)
@@ -827,7 +830,6 @@ def sig_int_term(signum, frame):
 
 def do_shutdown(res = 0):
     """Archiver system shutdown"""
-    global quotatbl, main_svc, pidfile
 
     if platform != 'win32' and pidfile is not None:
         try:
@@ -846,7 +848,7 @@ def do_shutdown(res = 0):
 ## Specific Startup on unix
 def unix_startup(config, user=None, debug=False):
     """ Unix specific startup actions """
-    global LOG, pidfile
+    global pidfile
     if user:
         try:
             userpw = getpwnam(user)
@@ -922,7 +924,7 @@ def win32_startup():
 ## Start the Archiver Service
 def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     """ Archiver Service Main """
-    global LOG, quotatbl, whitelist, isRunning, main_svc
+    global main_svc, LOG, quotatbl, whitelist, isRunning
     main_svc = service_main
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
@@ -931,12 +933,12 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     config = ConfigParser()
     config.read(configfile)
 
-    LOG = Logger(config=config, debug=debug)
+    LOG = Logger(config, debug)
 
     if platform == 'win32':
         user, mypid = win32_startup()
     else:
-        user, mypid = unix_startup(config, user=user, debug=debug)
+        user, mypid = unix_startup(config, user, debug)
 
     ## Quota table
     try:
@@ -962,12 +964,12 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     if 'storage' in sections:
         serverPoll.append(StageHandler(config, 'storage'))
 
-    if len(serverPoll):
-        multiplex(serverPoll, 'start')
-        isRunning = True
-    else:
+    if len(serverPoll) == 0:
         LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
         return do_shutdown(-7)
+    
+    multiplex(serverPoll, 'start')
+    isRunning = True
 
     try:
         granularity = config.getint('global', 'granularity')

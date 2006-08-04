@@ -149,23 +149,26 @@ class Backend(BackendBase):
             raise StorageTypeNotSupported, self.type
 
         try:
-            dsn = config.get(self.type, 'dsn', None)
-            driver, username, password, host, dbname = dsn.split(':')
-            self.driver = driver_map[driver]
-            self.dsn = "host=%s user=%s password=%s dbname=%s" % (host,
-                                                                  username,
-                                                                  password,
-                                                                  dbname)
+            dsn = self.config.get(self.type, 'dsn')
         except:
-            raise BadConnectionString
+            dsn = 'Missing connection string'
 
+        if dsn.count(':') != 4:
+            raise BadConnectionString, dsn
+
+        driver, username, password, host, dbname = dsn.split(':')
+        self.driver = driver_map[driver]
+        self.dsn = "host=%s user=%s password=%s dbname=%s" % (host,
+                                                              username,
+                                                              password,
+                                                              dbname)
         try:
             self.db_connect = getattr(__import__(self.driver, globals(), locals(), []), 'connect', None)
-        except ImportError:
-            raise Exception, 'Rdbms Backend: Driver not found'
+        except:
+            self.db_connect = None
 
         if self.db_connect is None:
-            raise Exception, 'Rdbms Backend: Driver misses connect method'
+            raise Exception, 'Rdbms Backend: Driver not found or missing connect method'
 
         self.connection = None
         self.cursor = None
@@ -191,15 +194,18 @@ class Backend(BackendBase):
 
         raises ConnectionError if fails"""
         self.close()
+        error = None
         try:
             self.connection = self.db_connect(self.dsn)
         except:
             ## We can work without the db connection and call it when needed
             t, val, tb = exc_info()
             del tb
-            msg = format_msg(val)
-            self.LOG(E_ERR, 'Rdbms Backend: connection to database failed: ' + msg)
-            raise ConnectionError, msg
+            error = format_msg(val)
+
+        if error is not None:
+            self.LOG(E_ERR, 'Rdbms Backend: connection to database failed: ' + error)
+            raise ConnectionError, error
 
         ## Try to disable autocommit
         try:
@@ -207,10 +213,12 @@ class Backend(BackendBase):
         except:
             t, val, tb = exc_info()
             del t, tb
-            msg = format_msg(val)
-            self.LOG(E_ERR, 'Rdbms Backend: cannot disable autocommit on the DB connection: ' + msg)
+            error = format_msg(val)
+
+        if error is not None:
+            self.LOG(E_ERR, 'Rdbms Backend: cannot disable autocommit on the DB connection: ' + error)
             self.close()
-            raise ConnectionError, msg
+            raise ConnectionError, error
 
         ## Check if connection has rollback method
         if not hasattr(self.connection, 'rollback'):
@@ -221,13 +229,13 @@ class Backend(BackendBase):
         self.cursor = self.connection.cursor()
         self.LOG(E_TRACE, 'Rdbms Backend: I\'ve got a cursor from the driver')
 
-    def do_query(self, qs, fetch=None, autorecon=None):
+    def do_query(self, qs, fetch=False, autorecon=False):
         """execute a query
 
         Query -> reconnection -> Query
         @param qs: the query string
-        @param fetch: is defined then the query must return a result
-        @param autorecon: if defined and if a query fails a db reconnection is done
+        @param fetch: if True the query must return a result
+        @param autorecon: if a query fails a db reconnection is done
         @return: year, pid, message, if year is 0 an error is occured,
                  pid has the code, message contains a more detailed explanation"""
         try:
@@ -247,8 +255,10 @@ class Backend(BackendBase):
                 try:
                     self.connect()
                 except:
-                    return 0, 443, 'Internal Server Error - Error reopening DB connection'
-                return self.do_query(qs, fetch, autorecon=None)
+                    error = 'Error reopening DB connectin'
+                if error is not None:
+                    return 0, 443, 'Internal Server Error - ' + error
+                return self.do_query(qs, fetch)
             else:
                 t, val, tb = exc_info()
                 del tb
@@ -268,11 +278,11 @@ class Backend(BackendBase):
         if (len(data['m_from']) == 0) or ((len(data['m_to']) + len(data['m_cc'])) == 0):
             return 0, 443, 'Integrity error missing From/To/Cc'
 
-        year, pid, result = self.do_query(self.query[0], fetch=1, autorecon=1)
+        year, pid, result = self.do_query(self.query[0], True, True)
 
         ## There is no pid for current year, so we create a new entry in the table
         if pid == -1:
-            year, pid, result = self.do_query(self.query[1], fetch=1)
+            year, pid, result = self.do_query(self.query[1], True)
 
         ## Error with DB Connection
         if year == 0:
@@ -334,8 +344,8 @@ class Backend(BackendBase):
         @return: result code"""
         msg = { 'year': data['year'],
                 'pid' : data['pid'],
-                'message_id' : data['mid'][:508]
-                'mail': encodestring(data['mail']),
+                'message_id' : data['mid'][:508],
+                'mail': encodestring(data['mail'])
                 }
 
         return self.do_query(self.query[0] % msg)
