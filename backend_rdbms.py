@@ -252,6 +252,7 @@ class Backend(BackendBase):
             self.LOG(E_ERR, 'Rdbms Backend: query fails')
             if autorecon:
                 self.LOG(E_ERR, 'Rdbms Backend: Trying to reopen DB Connection')
+                error = None
                 try:
                     self.connect()
                 except:
