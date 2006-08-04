@@ -9,7 +9,7 @@ MODULES=$(BACKENDS) archiver.py archiver_svc.py lmtp.py
 
 CONFS=archiver.ini archiver-win32.ini .pycheckrc
 TOOLS=Doxyfile pythfilter.py setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
-DOCS=copyright.txt TODO $(wildcard ChangeLog*) structure.txt py21_rfc822.diff
+DOCS=copyright.txt TODO $(wildcard ChangeLog*) structure.txt
 TESTFILES=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
 
 ALL=Makefile $(MODULES) $(DOCS) $(TOOLS) $(CONFS) $(CONTRIB)
