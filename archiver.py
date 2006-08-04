@@ -589,8 +589,8 @@ def StageHandler(config, stage_type):
                     LOG(E_ERR, '%s: Invalid X-Archiver-ID header [%s]' % (self.type, str(val)))
                     return self.do_exit(550, 'Invalid X-Archiver-ID header')
 
-                stuff = { 'mail': data, 'year': year, 'pid': pid, 'date': m_date }
-                LOG(E_TRACE, '%s: year is %d - pid is %d' % (self.type, year, pid))
+                stuff = { 'mail': data, 'year': year, 'pid': pid, 'date': m_date, 'mid': mid }
+                LOG(E_TRACE, '%s: year is %d - pid is %d (%s)' % (self.type, year, pid, mid))
                 status, code, msg = self.backend.process(stuff)
                 if status == 0:
                     LOG(E_ERR, '%s: process failed %s' % (self.type, msg))
@@ -778,6 +778,7 @@ def StageHandler(config, stage_type):
             bargs['m_sub'] = m_sub
             bargs['m_date'] = m_date
             bargs['m_attach'] = m_attach
+            bargs['m_mid'] = mid
 
             year, pid, error = self.backend.process(bargs)
             if year == 0:

@@ -54,6 +54,7 @@ qs_map = {
       '''INSERT INTO mail
          (year,
          pid,
+         message_id,
          from_login,
          from_domain,
          to_login,
@@ -64,6 +65,7 @@ qs_map = {
          VALUES
          (int4(EXTRACT (YEAR FROM NOW())),
          (SELECT max(pid) FROM mail_pid WHERE year=int4(EXTRACT (YEAR FROM NOW()))),
+         '%(message_id)s',
          '%(from_login)s',
          '%(from_domain)s',
          '%(to_login)s',
@@ -75,11 +77,13 @@ qs_map = {
     [ '''INSERT INTO mail_storage
          (year,
          pid,
-         mail)
+         mail,
+         mid)
          VALUES
          ('%(year)d',
          '%(pid)d',
-         '%(mail)s');''', '']
+         '%(mail)s',
+         '%(mid)s');''', '']
     }
 
 from archiver import *
@@ -291,17 +295,18 @@ class Backend(BackendBase):
 
             for dest in data['m_to'] + data['m_cc']:
                 try:
-                    dlog, ddom = dest[1].split('@',1)
+                    dlog, ddom = dest[1].split('@', 1)
                 except:
                     self.LOG(E_ERR, 'Error parsing to/cc: ' + dest[1])
                     dlog = dest[1]
                     ddom = dest[1]
 
-                values = { 'from_login': sql_quote(slog[:28]),
+                values = { 'message_id': sql_quote(data['m_mid'][:508]),
+                           'from_login': sql_quote(slog[:28]),
                            'from_domain': sql_quote(sdom[:255]),
                            'to_login': sql_quote(dlog[:28]),
                            'to_domain': sql_quote(ddom[:255]),
-                           'subject': subject,
+                           'subject': sql_quote(subject[:252]),
                            'date': date,
                            'attachments': nattach }
                 qs = qs + (self.query[2] % values)
@@ -329,7 +334,8 @@ class Backend(BackendBase):
         @return: result code"""
         msg = { 'year': data['year'],
                 'pid' : data['pid'],
-                'mail': encodestring(data['mail'])
+                'mail': encodestring(data['mail']),
+                'mid' : data['mid']
                 }
 
         return self.do_query(self.query[0] % msg)

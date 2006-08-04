@@ -1,6 +1,7 @@
 CREATE TABLE "mail" (
 	"year" smallint,
 	"pid" integer,
+	"message_id" character(508),
 	"from_login" character(28),
 	"from_domain" character(255),
 	"to_login" character(28),
@@ -17,6 +18,7 @@ CREATE TABLE "mail_pid" (
 
 CREATE INDEX index_pidb ON mail USING btree ("year", pid);
 CREATE INDEX index_pidh ON mail USING hash (pid);
+CREATE INDEX index_message_idb ON mail USING btree (message_id);
 CREATE INDEX index_from_loginb ON mail USING btree (from_login);
 CREATE INDEX index_from_domainb ON mail USING btree (from_domain);
 CREATE INDEX index_fromb ON mail USING btree (from_domain, from_login);
