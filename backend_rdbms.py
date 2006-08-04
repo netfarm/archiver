@@ -77,13 +77,13 @@ qs_map = {
     [ '''INSERT INTO mail_storage
          (year,
          pid,
-         mail,
-         mid)
+         message_id,
+         mail)
          VALUES
          ('%(year)d',
          '%(pid)d',
-         '%(mail)s',
-         '%(mid)s');''', '']
+         '%(message_id)s',
+         '%(mail)s');''', '']
     }
 
 from archiver import *
@@ -334,8 +334,8 @@ class Backend(BackendBase):
         @return: result code"""
         msg = { 'year': data['year'],
                 'pid' : data['pid'],
+                'message_id' : data['mid'][:508]
                 'mail': encodestring(data['mail']),
-                'mid' : data['mid']
                 }
 
         return self.do_query(self.query[0] % msg)
