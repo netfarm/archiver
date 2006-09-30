@@ -343,7 +343,7 @@ def StageHandler(config, stage_type):
 
     if not input_classes.has_key(input_class):
         raise BadStageInput, input_class
-    
+
     class StageHandler(Thread, input_classes[input_class]):
         """Base class for a StageHandler Backend"""
         def __init__(self, Class, config, stage_type):
@@ -575,7 +575,7 @@ def StageHandler(config, stage_type):
                     mktime(m_date)
                 except:
                     m_date = None
-            
+
             if m_date is None:
                 m_date = localtime(time())
 
@@ -685,7 +685,7 @@ def StageHandler(config, stage_type):
                 try:
                     m_from = parseaddr(sender)
                 except:
-                    return self.do_exit(552, 'Mail has not suitable From/Sender') 
+                    return self.do_exit(552, 'Mail has not suitable From/Sender')
 
             ## Extraction of To field
             try:
@@ -751,7 +751,7 @@ def StageHandler(config, stage_type):
                     mktime(m_date)
                 except:
                     m_date = None
-            
+
             if m_date is None:
                 m_date = localtime(time())
 
@@ -967,7 +967,7 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     if len(serverPoll) == 0:
         LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
         return do_shutdown(-7)
-    
+
     multiplex(serverPoll, 'start')
     isRunning = True
 
