@@ -43,7 +43,7 @@ py2exe_options = dict(
 
 nma = dict(
     company_name = 'Netfarm S.r.l.',
-    copyright = 'Copyright (C) 2005 Gianluigi Tiesi',
+    copyright = 'Copyright (C) 2006 Gianluigi Tiesi',
     comments = 'Netfarm Mail Archiver',
     icon_resources = [(1, "nma.ico")],
     modules = ['archiver_svc']
@@ -51,7 +51,7 @@ nma = dict(
 
 archiver = dict(
     company_name = 'Netfarm S.r.l.',
-    copyright = 'Copyright (C) 2005 Gianluigi Tiesi',
+    copyright = 'Copyright (C) 2006 Gianluigi Tiesi',
     comments = 'Netfarm Mail Archiver',
     icon_resources = [(1, "nma.ico")],
     script = 'archiver.py'
