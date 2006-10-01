@@ -246,6 +246,7 @@ def mime_decode_header(line):
 
     return newline + line[pos:]
 
+### FIXME: a bit ugly
 def split_hdr(key, ct_string, hd):
     """Headers splitting
 
@@ -564,7 +565,7 @@ def StageHandler(config, stage_type):
             LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
             if self.hashdb.has_key(mid):
                 aid = self.hashdb[mid]
-                LOG(E_ERR, '%s: Message has yet been processed' % self.type)
+                LOG(E_ERR, '%s: Message already processed' % self.type)
                 return self.sendmail(sender, recips, data, aid, mid)
 
             ## Date extraction
@@ -664,7 +665,7 @@ def StageHandler(config, stage_type):
             if mid is not None and self.hashdb.has_key(mid):
                 LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
                 aid = self.hashdb[mid]
-                LOG(E_TRACE, '%s: Message has yet assigned year/pid pair, only adding header' % self.type)
+                LOG(E_TRACE, '%s: Message already has year/pid pair, only adding header' % self.type)
                 return self.sendmail(sender, recips, self.add_aid(data, msg, aid), aid, mid)
 
             ## Check for duplicate header
