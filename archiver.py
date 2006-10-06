@@ -83,7 +83,7 @@ BACKEND_OK  = (1, 200, 'Ok')
 MINSIZE     = 8
 
 ### Globals
-global LOG, quotatbl, pidfile, isRunning, main_svc, serverPoll
+global LOG, runas, quotatbl, pidfile, isRunning, main_svc, serverPoll
 
 LOG        = None
 quotatbl   = None
@@ -91,6 +91,7 @@ pidfile    = None
 isRunning  = False
 main_svc   = False
 serverPoll = []
+runas      = None
 ##
 
 class DEBUGServer:
@@ -919,7 +920,7 @@ def win32_startup():
 ## Start the Archiver Service
 def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     """ Archiver Service Main """
-    global main_svc, LOG, quotatbl, whitelist, isRunning
+    global main_svc, LOG, runas, quotatbl, whitelist, isRunning
     main_svc = service_main
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
@@ -931,9 +932,9 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     LOG = Logger(config, debug)
 
     if platform == 'win32':
-        user, mypid = win32_startup()
+        runas, mypid = win32_startup()
     else:
-        user, mypid = unix_startup(config, user, debug)
+        runas, mypid = unix_startup(config, user, debug)
 
     ## Quota table
     try:
@@ -944,13 +945,13 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
 
     ## Whitelist
     try:
-        whitelist = config.get('global','whitelist').split(',')
+        whitelist = config.get('global', 'whitelist').split(',')
         LOG(E_TRACE, '[Main] My whitelist is ' + ','.join(whitelist))
     except:
         pass
 
     ## Starting up
-    LOG(E_INFO, '[Main] Running as user %s pid %s' % (user, mypid))
+    LOG(E_INFO, '[Main] Running as user %s pid %s' % (runas, mypid))
 
     ## Creating stage sockets
     sections = config.sections()
