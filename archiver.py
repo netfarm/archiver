@@ -246,27 +246,21 @@ def mime_decode_header(line):
 
     return newline + line[pos:]
 
-### FIXME: a bit ugly
-def split_hdr(key, ct_string, hd):
-    """Headers splitting
+def unquote(text):
+    return ''.join(text.split('"'))
 
-    extract file name and content-disposition"""
-    if ct_string.find(';') != -1:
-        hd[key], params = ct_string.split(';', 1)
-        params = params.strip().split(';')
-        for par in params:
-            par = par.strip()
-            if par.find('=') != -1:
-                pname, pvalue = par.split('=', 1)
-                pname = pname.strip()
-                pvalue = pvalue.strip()
-                if pvalue[0] == '"' and pvalue[-1] == '"' and pvalue !='""':
-                    pvalue = pvalue[1:-1]
-                hd[pname] = pvalue
-    else:
-        hd[key] = ct_string
-
-
+def split_hdr(header, value, dict):
+    """ Multiline headers splitting"""
+    hdr = '='.join([header, value]).replace('\r', '').replace('\n', '')
+    hdr_list = hdr.split(';')
+    for hdr in hdr_list:
+        hdr = hdr.strip()
+        if hdr.find('=') == -1: continue
+        key, value = hdr.split('=', 1)
+        key = key.strip()
+        value = unquote(value).strip()
+        dict[key] = value
+                                                        
 def parse(submsg):
     """Parse a sub message"""
     found = None
