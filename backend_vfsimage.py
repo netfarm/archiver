@@ -78,7 +78,7 @@ class Backend(BackendBase):
         self.umount()
         self.reseal()
         raise BadConfigFile
-        
+
         mounts = open('/proc/mounts').readlines()
         for mp in mounts:
             mp = mp.strip().split()
@@ -121,7 +121,7 @@ class Backend(BackendBase):
 
     def reseal(self):
         return self.do_cmd(cmd_tune2fs % { 'image': self.image }, 'Cannot remove journal from image')
-        
+
     ## Gets mailpath and filename
     def get_paths(self, data):
         month = data['date'][1]
