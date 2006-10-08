@@ -417,6 +417,7 @@ class LMTPServer(dispatcher):
         if localaddr.find(':') == -1:
             raise UnknownProtocol, localaddr
 
+        dispatcher.__init__(self)
         proto, params = localaddr.split(':', 1)
 
         ### UNIX
@@ -453,7 +454,7 @@ class LMTPServer(dispatcher):
         self.localaddr = (proto, params)
         self.addr = (proto, params)
         self.map = { self.socket.fileno(): self }
-        dispatcher.__init__(self, self.socket, self.map)
+        
         self.listen(5)
 
     def writable(self):
