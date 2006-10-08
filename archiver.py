@@ -441,7 +441,7 @@ def StageHandler(config, stage_type):
         def run(self):
             self.setName(self.type)
             LOG(E_ALWAYS, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
-            self.loop(self.granularity, self.usepoll, self.map)
+            self.loop(self.granularity, self.usepoll)
 
         ## Hooks to gracefully stop threads
         def accept_hook(self):
