@@ -51,6 +51,7 @@ class Backend(BackendBase):
     Stores emails on filesystem image"""
     def __init__(self, config, stage_type, ar_globals):
         """The constructor"""
+        ### FIXME: Linux only - make check
         self.config = config
         self.type = stage_type
 
