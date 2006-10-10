@@ -30,7 +30,7 @@ from os import path, access, makedirs, F_OK, R_OK, W_OK
 from ConfigParser import ConfigParser
 from popen2 import Popen4
 
-## Costants
+## Constants
 cmd_mke2fs='/sbin/mke2fs -j -q -F -T news -L %(label)s -m 0 -O dir_index %(image)s'
 cmd_tune2fs='/sbin/tune2fs -O ^has_journal %(image)s'
 cmd_mount='/usr/bin/sudo /bin/mount -t ext3 -o loop %(image)s %(mountpoint)s'
