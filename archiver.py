@@ -399,7 +399,7 @@ def StageHandler(config, stage_type):
                 self.hashdb = opendb(config.get(self.type, 'hashdb'), 'c')
             except:
                 LOG(E_TRACE, '%s: Cannot open hashdb file' % self.type)
-                raise Exception, '%s: Cannot open hashdb file' % self.type
+                raise Exception, 'Cannot open hashdb file'
 
             try:
                 self.debuglevel = config.getint(self.type, 'debuglevel')
