@@ -76,7 +76,7 @@ class Backend(BackendBase):
         except:
             t, val, tb = exc_info()
             del t, tb
-            self.LOG(E_ERR, 'Bad config file: %s' % str(val))               
+            self.LOG(E_ERR, 'Bad config file: %s' % str(val))
             raise BadConfig
 
         if not access(self.mountpoint, F_OK | R_OK | W_OK):
