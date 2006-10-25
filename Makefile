@@ -30,19 +30,6 @@ distclean: clean cleandoc
 pycheck:
 	pychecker backend_*.py archiver.py lmtp.py || true
 
-doxygen:
-doc/latex:
-	@echo doxygen-ing...
-	@doxygen 2>&1 | grep -v "param is not found in the argument list"
-	@make doxygen-pdf
-
-doxygen-pdf: doc/latex
-	@echo PDF-Doxygen
-	@( cd doc/latex && make )
-
-doxy:
-	make doxygen >doxy.log && less doxy.log
-
 epydoc-html:
 	@echo Creating html Documentation
 	epydoc --html -o api -n "Netfarm Mail Archiver" \
@@ -59,7 +46,7 @@ epycheck:
 	epydoc --check --ignore-param-mismatch $(MODULES) >epy.log 2>&1
 
 epydoc: epydoc-html epydoc-pdf
-docs: doxygen epydoc
+docs: epydoc
 
 dist: $(DIST)
 $(DIST): $(ALL)
