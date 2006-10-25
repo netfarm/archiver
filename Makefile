@@ -31,11 +31,12 @@ pycheck:
 	pychecker backend_*.py archiver.py lmtp.py || true
 
 doxygen:
+doc/latex:
 	@echo doxygen-ing...
 	@doxygen 2>&1 | grep -v "param is not found in the argument list"
 	@make doxygen-pdf
 
-doxygen-pdf:
+doxygen-pdf: doc/latex
 	@echo PDF-Doxygen
 	@( cd doc/latex && make )
 
