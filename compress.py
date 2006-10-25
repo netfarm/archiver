@@ -20,7 +20,7 @@
 
 __doc__ = '''Netfarm Archiver - release 2.0.0 - Helper for file compression'''
 __version__ = '2.0.0'
-__all__ = [ 'CompressedFile' ]
+__all__ = [ 'CompressedFile', 'compressors' ]
 
 from cStringIO import StringIO
 
@@ -28,7 +28,6 @@ compressors = {}
 
 ## Gzip File support
 try:
-    import zlib
     from gzip import GzipFile
     compressors.update({'gzip': 'GzipCompressedFile'})
 except:
