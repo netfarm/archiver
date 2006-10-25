@@ -117,11 +117,11 @@ class BZip2CompressedFile:
     def close(self):
         pass
 
-class CompressedFile:
-    def __init__(self, **args):
+def CompressedFile(**args):
         compressor = args.get('compressor', None)
         if compressor is None or not compressors.has_key(compressor):
             raise UnsupportedCompressor
+
         args['name'] = args.get('name', 'Unnamed')
 
         method = None
@@ -129,10 +129,8 @@ class CompressedFile:
             method = int(args.get('method', 9))
         except:
             pass
-        if method is None:
+        if method is None or (method < 0) or (method > 9):
             raise InvalidMethod
 
         args['method'] = method
-        compclass = globals().get(compressors[compressor])
-        CompressedFile.__bases__ += (compclass,)
-        compclass.__init__(self, **args)
+        return globals().get(compressors[compressor])(**args)
