@@ -75,3 +75,4 @@ TODO 2.x:
 - implement timed reload of quota hash depending on modified timestamp
   to avoid reloading each check
 - make compression ratio check in various compressors
+- check backend_xmlrpc, new version is totally untested
