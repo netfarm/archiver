@@ -8,7 +8,7 @@ BACKENDS=$(wildcard backend_*.py)
 MODULES=$(BACKENDS) archiver.py archiver_svc.py lmtp.py compress.py
 
 CONFS=archiver.ini archiver-win32.ini .pycheckrc
-TOOLS=Doxyfile pythfilter.py setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
+TOOLS=setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
 DOCS=copyright.txt TODO $(wildcard ChangeLog*) structure.txt
 TESTFILES=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
 
@@ -54,7 +54,7 @@ $(DIST): $(ALL)
 	@mkdir -p $(DISTDIR)
 	@for dir in $(SUBDIRS); do echo Creating $(DISTDIR)/$$dir ; install -m755 -d $(DISTDIR)/$$dir; done
 	@for file in $(ALL); do echo Installing $(DISTDIR)/$$file ; install -m644 $$file $(DISTDIR)/$$file; done
-	@chmod 755 $(DISTDIR)/{archiver,lmtp,pythfilter,setup_all}.py
+	@chmod 755 $(DISTDIR)/{archiver,lmtp,setup_all}.py
 	@chmod 755 $(DISTDIR)/init.d
 	@( cd dist && tar czf ../$(DIST) archiver-$(VERSION) )
 	@echo Cleaning up dist && rm -fr dist
