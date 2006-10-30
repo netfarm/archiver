@@ -23,6 +23,7 @@ __doc__ = '''Netfarm Archiver relase 2.0.0 - Main worker'''
 __version__ = '2.0.0'
 __all__ = [ 'BackendBase',
             'StorageTypeNotSupported',
+            'BadConfig',
             'BACKEND_OK',
             'mime_decode_header',
             'E_NONE',
@@ -133,6 +134,10 @@ class BadStageOutput(Exception):
 
 class BadBackendTypeError(Exception):
     """BadBackendTypeError An error occurred when importing Backend module"""
+    pass
+
+class BadConfig(Exception):
+    """BadConfig An error occurred while parsing Backend configuration"""
     pass
 
 class BackendBase:
@@ -261,7 +266,7 @@ def split_hdr(header, value, dict):
         key = key.strip()
         value = unquote(value).strip()
         dict[key] = value
-                                                        
+
 def parse(submsg):
     """Parse a sub message"""
     found = None

@@ -26,6 +26,7 @@ __all__ = [ 'Backend' ]
 from archiver import *
 from sys import exc_info
 from os import path, access, makedirs, F_OK, R_OK, W_OK
+from compress import CompressedFile, compressors
 
 ##
 class BadStorageDir(Exception):
@@ -48,6 +49,28 @@ class Backend(BackendBase):
 
         if not access(self.storagedir, F_OK | R_OK | W_OK):
             raise BadStorageDir, self.storagedir
+
+        try:
+            self.compression = config.get(self.type, 'compression')
+        except:
+            self.compression = None
+
+        error = None
+        if self.compression is not None:
+            try:
+                compressor, ratio = self.compression.split(':')
+                ratio = int(ratio)
+                if ratio < 0 or ratio > 9:
+                    error = 'Invalid compression ratio'
+                elif not compressors.has_key(compressor.lower()):
+                    error = 'Compression type not supported'
+                self.compression = (compressor, ratio)
+            except:
+                pass
+
+        if error is not None:
+            self.LOG(E_ERR, 'Invalid compression option: %s' % self.compression)
+            raise BadConfig, 'Invalid compression option'
 
         self.LOG(E_ALWAYS, 'Filesystem Backend (%s) at %s ' % (self.type, self.storagedir))
 
@@ -77,6 +100,13 @@ class Backend(BackendBase):
 
         if error is not None:
             return 0, 443, error
+
+        if self.compression is not None:
+            name = '%d-%d' % (data['year'], data['pid'])
+            comp = CompressedFile(compressor=self.compression[0], ratio=self.compression[1], name=name)
+            comp.write(data['mail'])
+            data['mail'] = comp.getdata()
+            comp.close()
 
         try:
             fd = open(filename, 'wb')

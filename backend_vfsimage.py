@@ -29,6 +29,7 @@ from sys import platform, exc_info
 from os import path, access, makedirs, stat, F_OK, R_OK, W_OK
 from ConfigParser import ConfigParser
 from popen2 import Popen4
+from compress import CompressedFile, compressors
 
 ### /etc/sudoers
 # user ALL = NOPASSWD:/bin/mount,/bin/umount,/usr/bin/install
@@ -41,10 +42,6 @@ cmd_umount='/usr/bin/sudo /bin/umount %(mountpoint)s'
 cmd_prepare='/usr/bin/sudo /usr/bin/install -d -m 755 -o %(user)s %(mountpoint)s/%(archiverdir)s'
 
 ##
-class BadConfig(Exception):
-    """BadConfig VFS Image Config file in config file"""
-    pass
-
 class VFSError(Exception):
     pass
 
@@ -67,6 +64,7 @@ class Backend(BackendBase):
         if platform.find('linux') == -1:
             raise VFSError, 'This backend only works on Linux'
 
+        error = 'None'
         try:
             self.image = config.get(self.type, 'image')
             self.mountpoint = config.get(self.type, 'mountpoint')
@@ -76,8 +74,33 @@ class Backend(BackendBase):
         except:
             t, val, tb = exc_info()
             del t, tb
-            self.LOG(E_ERR, 'Bad config file: %s' % str(val))
+            error = str(val)
+
+        if error is not None:
+            self.LOG(E_ERR, 'Bad config file: %s' % error)
             raise BadConfig
+
+        try:
+            self.compression = config.get(self.type, 'compression')
+        except:
+            self.compression = None
+
+        error = None
+        if self.compression is not None:
+            try:
+                compressor, ratio = self.compression.split(':')
+                ratio = int(ratio)
+                if ratio < 0 or ratio > 9:
+                    error = 'Invalid compression ratio'
+                elif not compressors.has_key(compressor.lower()):
+                    error = 'Compression type not supported'
+                self.compressor = (compressor, ratio)
+            except:
+                pass
+
+        if error is not None:
+            self.LOG(E_ERR, 'Invalid compression option: %s' % self.compression)
+            raise BadConfig, 'Invalid compression option'
 
         if not access(self.mountpoint, F_OK | R_OK | W_OK):
             self.LOG(E_ERR, 'VFS Image Backend (%s): Mount point is not accessible: %s' %
@@ -98,13 +121,8 @@ class Backend(BackendBase):
         if not self.mount():
             raise VFSError, 'Cannot mount image'
 
-        self.prepare()
-
-        ### FIXME This is only a test
-        open(path.join(self.mountpoint, self.archiverdir, 'test'), 'w').write('test')
-        self.umount()
-        #self.reseal()
-        raise VFSError, 'Test Completed'
+        if not self.prepare():
+            raise VFSError, 'Image preparation failed'
 
         self.LOG(E_ALWAYS, 'VFS Image Backend (%s) at %s' % (self.type, self.image))
 
@@ -170,6 +188,10 @@ class Backend(BackendBase):
         mailpath, filename = self.get_paths(data)
 
         ## First check integrity
+        if self.isMounted():
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Image not mounted' % self.type)
+            return 0, 443, 'Image not mounted'
+
         error = None
         if not access(mailpath, F_OK | R_OK | W_OK):
             error = 'No access to mailpath'
@@ -185,6 +207,13 @@ class Backend(BackendBase):
 
         if error is not None:
             return 0, 443, error
+
+        if self.compression is not None:
+            name = '%d-%d' % (data['year'], data['pid'])
+            comp = CompressedFile(compressor=self.compression[0], ratio=self.compression[1], name=name)
+            comp.write(data['mail'])
+            data['mail'] = comp.getdata()
+            comp.close()
 
         try:
             fd = open(filename, 'wb')

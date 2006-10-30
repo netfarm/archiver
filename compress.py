@@ -58,7 +58,7 @@ class InvalidMethod(Exception):
 class GzipCompressedFile:
     def __init__(self, **args):
         self.data = StringIO()
-        self.classobj = GzipFile(args.get('name'), 'wb', args.get('method'), self.data)
+        self.classobj = GzipFile(args.get('name'), 'wb', args.get('ratio'), self.data)
 
     def write(self, data):
         self.classobj.write(data)
@@ -81,12 +81,12 @@ class ZipCompressedFile:
     def __init__(self, **args):
         self.data = StringIO()
         self.name = args.get('name')
-        if args.get('method') > 0:
-            method = ZIP_DEFLATED
+        if args.get('ratio') > 0:
+            ratio = ZIP_DEFLATED
         else:
-            method = ZIP_STORED
+            ratio = ZIP_STORED
 
-        self.classobj = ZipFile(self.data, 'wb', method)
+        self.classobj = ZipFile(self.data, 'wb', ratio)
 
     def write(self, data):
         self.classobj.writestr(self.name, data)
@@ -106,7 +106,7 @@ class ZipCompressedFile:
 
 class BZip2CompressedFile:
     def __init__(self, **args):
-        self.classobj = BZ2Compressor(args.get('method'))
+        self.classobj = BZ2Compressor(args.get('ratio'))
 
     def write(self, data):
         self.classobj.compress(data)
@@ -124,13 +124,13 @@ def CompressedFile(**args):
 
         args['name'] = args.get('name', 'Unnamed')
 
-        method = None
+        ratio = None
         try:
-            method = int(args.get('method', 9))
+            ratio = int(args.get('ratio', 9))
         except:
             pass
-        if method is None or (method < 0) or (method > 9):
+        if ratio is None or (ratio < 0) or (ratio > 9):
             raise InvalidMethod
 
-        args['method'] = method
+        args['ratio'] = ratio
         return globals().get(compressors[compressor])(**args)
