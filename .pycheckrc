@@ -10,9 +10,9 @@ only = 1
 limit = 100
 
 # bool: warnings for Doc Strings
-noDocModule = 1
-noDocClass = 1
-noDocFunc = 1
+noDocModule = 0
+noDocClass = 0
+noDocFunc = 0
 
 # bool: when checking if class data members (attributes) are set
 #       check all members or __init__() only
