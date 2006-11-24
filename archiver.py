@@ -653,6 +653,9 @@ def StageHandler(config, stage_type):
             if size < MINSIZE:
                 return self.do_exit(550, 'Invalid Mail')
 
+            if not data.endswith(NL):
+                data = data + NL
+
             stream = StringIO(data)
             msg = Message(stream)
 
