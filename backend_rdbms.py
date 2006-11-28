@@ -23,7 +23,7 @@ __doc__ = '''Netfarm Archiver - release 2.0.0 - Rdbms backend'''
 __version__ = '2.0.0'
 __all__ = [ 'Backend' ]
 
-driver_map = { 'psql': 'psycopg' }
+driver_map = { 'psql': 'psycopg2' }
 
 qs_map = {
     'archive':
@@ -207,9 +207,9 @@ class Backend(BackendBase):
             self.LOG(E_ERR, 'Rdbms Backend: connection to database failed: ' + error)
             raise ConnectionError, error
 
-        ## Try to disable autocommit
+        ## Disable autocommit
         try:
-            self.connection.autocommit(0) # FIXME - API is changed
+            self.connection.set_isolation_level(2)
         except:
             t, val, tb = exc_info()
             del t, tb
