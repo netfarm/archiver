@@ -281,4 +281,8 @@ class Backend(BackendBase):
     def shutdown(self):
         """Backend Shutdown callback"""
         self.LOG(E_ALWAYS, 'VFS Backend (%s): shutting down' % self.type)
-        self.umount()
+        try:
+            stat(self.image)
+            self.umount()
+        except:
+            pass
