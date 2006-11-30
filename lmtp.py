@@ -454,7 +454,7 @@ class LMTPServer(dispatcher):
         self.localaddr = (proto, params)
         self.addr = (proto, params)
         self.map = { self.socket.fileno(): self }
-        
+
         self.listen(5)
 
     def writable(self):
