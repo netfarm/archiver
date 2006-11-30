@@ -31,7 +31,7 @@ if platform != 'win32':
     from socket import AF_UNIX
 from asynchat import async_chat, fifo
 from asyncore import loop, dispatcher
-from asyncore import close_all as asyn_close_all
+from asyncore import close_all as asyncore_close_all
 from socket import gethostbyaddr, gethostbyname, gethostname
 from socket import socket, AF_INET, SOCK_STREAM
 from smtplib import SMTP, SMTPConnectError, SMTPServerDisconnected
@@ -472,7 +472,7 @@ class LMTPServer(dispatcher):
 
     def close_all(self):
         """closes all connections"""
-        asyn_close_all(self.map)
+        asyncore_close_all(self.map)
 
     def handle_accept(self):
         """handle client connections
