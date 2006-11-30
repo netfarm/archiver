@@ -66,7 +66,7 @@ class Backend(BackendBase):
         if platform.find('linux') == -1:
             raise VFSError, 'This backend only works on Linux'
 
-        error = 'None'
+        error = None
         try:
             self.image = config.get(self.type, 'image')
             self.mountpoint = config.get(self.type, 'mountpoint')
