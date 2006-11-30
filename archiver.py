@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.3
+#!/usr/bin/env python
 # -*- Mode: Python; tab-width: 4 -*-
 #
 # Netfarm Mail Archiver - release 2
