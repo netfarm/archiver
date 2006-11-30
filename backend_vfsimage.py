@@ -96,12 +96,12 @@ class Backend(BackendBase):
                     error = 'Invalid compression ratio'
                 elif not compressors.has_key(compressor.lower()):
                     error = 'Compression type not supported'
-                self.compressor = (compressor, ratio)
+                self.compression = (compressor, ratio)
             except:
-                pass
+                error = 'Unparsable compression entry in config file'
 
         if error is not None:
-            self.LOG(E_ERR, 'Invalid compression option: %s' % self.compression)
+            self.LOG(E_ERR, 'Invalid compression option: %s' % error)
             raise BadConfig, 'Invalid compression option'
 
         if not access(self.mountpoint, F_OK | R_OK | W_OK):
