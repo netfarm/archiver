@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.3
 # -*- Mode: Python; tab-width: 4 -*-
 #
 # Netfarm Mail Archiver - release 2
@@ -446,7 +446,7 @@ def StageHandler(config, stage_type):
         def run(self):
             self.setName(self.type)
             LOG(E_ALWAYS, '[%d] Starting Stage Handler %s: %s %s' % (getpid(), self.type, self.proto, self.address))
-            self.loop(self.granularity, self.usepoll)
+            self.loop(self.granularity, self.usepoll, self.map)
 
         ## Hooks to gracefully stop threads
         def accept_hook(self):

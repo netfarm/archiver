@@ -31,7 +31,7 @@ if platform != 'win32':
     from socket import AF_UNIX
 from asynchat import async_chat, fifo
 from asyncore import loop, dispatcher
-from asyncore import close_all as asyncore_close_all
+from asyncore import close_all as asyn_close_all
 from socket import gethostbyaddr, gethostbyname, gethostname
 from socket import socket, AF_INET, SOCK_STREAM
 from smtplib import SMTP, SMTPConnectError, SMTPServerDisconnected
@@ -82,13 +82,13 @@ def check7bit(address):
     except:
         return False
 
-def unquote(address, mapping=SPECIAL):
+def unquote(address, map=SPECIAL):
     """unquote a quoted address
 
     @param address: is the address to uquote
-    @param mapping: is the special quoted char list
+    @param map: is the special quoted char list
     @return: address unquoted"""
-    for c in mapping + '\\':
+    for c in map + '\\':
         address = c.join(address.split(QUOTE + c))
     return address
 
@@ -236,12 +236,13 @@ class LMTPChannel(async_chat):
     A subclass of async_chat, ideal to handle 'chat' like protocols"""
     COMMAND = 0
     DATA = 1
-    def __init__(self, server, conn, addr):
+    def __init__(self, server, conn, addr, map=None):
         """The constructor"""
         self.ac_in_buffer = ''
         self.ac_out_buffer = ''
         self.producer_fifo = fifo()
-        dispatcher.__init__ (self, conn)
+        self.map = map
+        dispatcher.__init__ (self, conn, self.map)
         self.__server = server
         self.__conn = conn
         self.__addr = addr
@@ -316,7 +317,7 @@ class LMTPChannel(async_chat):
 
     def close(self):
         """Close the channel and the socket"""
-        self.del_channel()
+        self.del_channel(self.map)
         self.socket.close()
 
     # LMTP commands
@@ -452,6 +453,8 @@ class LMTPServer(dispatcher):
 
         self.localaddr = (proto, params)
         self.addr = (proto, params)
+        self.map = { self.socket.fileno(): self }
+        
         self.listen(5)
 
     def writable(self):
@@ -460,7 +463,7 @@ class LMTPServer(dispatcher):
 
     def close(self):
         """Close the channel and the socket"""
-        self.del_channel()
+        self.del_channel(self.map)
         self.socket.close()
         if self.localaddr[1]==0:
             try:
@@ -469,14 +472,14 @@ class LMTPServer(dispatcher):
 
     def close_all(self):
         """closes all connections"""
-        asyncore_close_all()
+        asyn_close_all(self.map)
 
     def handle_accept(self):
         """handle client connections
         gracefully shutdown if some signal has interrupted self.accept()"""
         try:
             conn, addr = self.accept()
-            channel = LMTPChannel(self, conn, addr)
+            channel = LMTPChannel(self, conn, addr, self.map)
             channel.debuglevel = self.debuglevel
             if self.del_hook: channel.__del__ = self.del_hook
         except: pass
@@ -512,13 +515,14 @@ class SMTPChannel(smtpd_SMTPChannel):
     """Communication channel to handle a chat-style connection"""
     COMMAND = 0
     DATA = 1
-    def __init__(self, server, conn, addr):
+    def __init__(self, server, conn, addr, map=None):
         """The constructor"""
         self.debuglevel = 0
         self.ac_in_buffer = ''
         self.ac_out_buffer = ''
         self.producer_fifo = fifo()
-        dispatcher.__init__ (self, conn)
+        self.map = map
+        dispatcher.__init__ (self, conn, self.map)
         self.__server = server
         self.__conn = conn
         self.__addr = addr
@@ -564,7 +568,7 @@ class SMTPChannel(smtpd_SMTPChannel):
 
     def close(self):
         """Close the channel and the socket"""
-        self.del_channel()
+        self.del_channel(self.map)
         self.socket.close()
 
 class SMTPServer(LMTPServer):
@@ -573,7 +577,7 @@ class SMTPServer(LMTPServer):
         ### gracefully shutdown if some signal has interrupted self.accept()
         try:
             conn, addr = self.accept()
-            channel = SMTPChannel(self, conn, addr)
+            channel = SMTPChannel(self, conn, addr, self.map)
             channel.debuglevel = self.debuglevel
             if self.del_hook: channel.__del__ = self.del_hook
         except: pass
