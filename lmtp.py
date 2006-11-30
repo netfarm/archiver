@@ -82,13 +82,13 @@ def check7bit(address):
     except:
         return False
 
-def unquote(address, map=SPECIAL):
+def unquote(address, mapping=SPECIAL):
     """unquote a quoted address
 
     @param address: is the address to uquote
-    @param map: is the special quoted char list
+    @param mapping: is the special quoted char list
     @return: address unquoted"""
-    for c in map + '\\':
+    for c in mapping + '\\':
         address = c.join(address.split(QUOTE + c))
     return address
 
