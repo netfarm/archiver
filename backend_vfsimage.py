@@ -27,6 +27,8 @@ __all__ = [ 'Backend' ]
 from archiver import *
 from sys import platform, exc_info
 from os import path, access, makedirs, stat, F_OK, R_OK, W_OK
+from os import unlink, rename
+from errno import ENOSPC
 from ConfigParser import ConfigParser
 from popen2 import Popen4
 from compress import CompressedFile, compressors
@@ -187,6 +189,23 @@ class Backend(BackendBase):
     def reseal(self):
         return self.do_cmd(cmd_tune2fs % { 'image': self.image }, 'Cannot remove journal from image')
 
+    def recycle(self):
+        if not self.umount():
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: umount failed' % self.type)
+            return False
+            
+        if not self.reseal():
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: reseal failed' % self.type)
+            return False
+
+        try:
+            rename(self.image, 'FIXME')
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: rename failed' % self.type)
+        except:
+            return False
+
+        return True
+
     ## Gets mailpath and filename
     def get_paths(self, data):
         month = data['date'][1]
@@ -202,7 +221,7 @@ class Backend(BackendBase):
             stat(self.image)
         except:
             self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Image not present, creting it' % self.type)
-            label = 'NMA-%d-%d' % (data['year'], data['pid']) # FIXME add date
+            label = 'NMA-[%d-%d]' % (data['year'], data['pid'])
             if not self.create(label):
                 self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create Image file' % self.type)
                 return 0, 443, 'Internal Error (Image creation failed)'
@@ -242,9 +261,20 @@ class Backend(BackendBase):
             self.LOG(E_TRACE, 'VFS Image Backend (%s): wrote %s' % (self.type, filename))
             return BACKEND_OK
         except:
-            ### FIXME switch to a new Image when the current is full
             t, val, tb = exc_info()
             del tb
+            if val.errno == ENOSPC:
+                try:
+                    unlink(filename)
+                except:
+                    pass
+                if not self.recycle():
+                    self.LOG(E_ERR, 'VFS Image Backend (%s): Error recycling Image' % self.type)
+                    return 0, 443, 'Internal Error (Recycling failed)'
+
+                self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Recycled Image File, write postponed' % self.type)
+                return 0, 443, 'Recycling volume'
+
             self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot write mail file: %s' % (self.type, str(val)))
             return 0, 443, '%s: %s' % (t, val)
 
