@@ -112,19 +112,18 @@ class Backend(BackendBase):
             if not self.umount():
                 raise VFSError, 'Cannot umount image'
 
-        ## Image file not present
-        try:
-            stat(self.image)
-        except:
-            self.create('TestVolume') ## FIXME This is only a test
+        self.LOG(E_ALWAYS, 'VFS Image Backend (%s) at %s' % (self.type, self.image))
 
+    def initImage(self):
         if not self.mount():
-            raise VFSError, 'Cannot mount image'
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot mount image' % self.type)
+            return False
 
         if not self.prepare():
-            raise VFSError, 'Image preparation failed'
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Image preparation failed' % self.type)
+            return False
 
-        self.LOG(E_ALWAYS, 'VFS Image Backend (%s) at %s' % (self.type, self.image))
+        return True
 
     def isMounted(self):
         try:
@@ -157,6 +156,7 @@ class Backend(BackendBase):
         return self.do_cmd(cmd_umount % { 'mountpoint' : self.mountpoint }, 'Cannot umount image')
 
     def create(self, label):
+        ## TODO: update image table
         try:
             fd = open(self.image, 'wb')
             fd.seek((self.imagesize * 1024 * 1024) - 1)
@@ -187,10 +187,21 @@ class Backend(BackendBase):
     def process(self, data):
         mailpath, filename = self.get_paths(data)
 
-        ## First check integrity
-        if self.isMounted():
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Image not mounted' % self.type)
-            return 0, 443, 'Image not mounted'
+        ## FIXME: This is done on each write, find a way to avoid it, since it's only
+        ##        needed for the first time creation. Maybe create image using 1-curr_year
+        ##        or maybe checking to access to mailpath but I'm not so sure it's realable
+        try:
+            stat(self.image)
+        except:
+            self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Image not present, creting it' % self.type)
+            label = 'NMA-%d-%d' % (data['year'], data['pid']) # FIXME add date
+            if not self.create(label):
+                self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create Image file' % self.type)
+                return 0, 443, 'Internal Error (Image creation failed)'
+
+        if not self.initImage():
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot init Image' % self.type)
+            return 0, 443, 'Internal Error (Cannot init Image)'
 
         error = None
         if not access(mailpath, F_OK | R_OK | W_OK):
@@ -223,6 +234,7 @@ class Backend(BackendBase):
             self.LOG(E_TRACE, 'VFS Image Backend (%s): wrote %s' % (self.type, filename))
             return BACKEND_OK
         except:
+            ### FIXME switch to a new Image when the current is full
             t, val, tb = exc_info()
             del tb
             self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot write mail file: %s' % (self.type, str(val)))
