@@ -112,6 +112,17 @@ class Backend(BackendBase):
             if not self.umount():
                 raise VFSError, 'Cannot umount image'
 
+        isPresent = True
+        try:
+            stat(self.image)
+        except:
+            isPresent = False
+
+        if isPresent and not self.initImage():
+            raise VFSError, 'Cannot init Image'
+        else:
+            self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Image init postponed ' % self.type)
+
         self.LOG(E_ALWAYS, 'VFS Image Backend (%s) at %s' % (self.type, self.image))
 
     def initImage(self):
@@ -187,9 +198,6 @@ class Backend(BackendBase):
     def process(self, data):
         mailpath, filename = self.get_paths(data)
 
-        ## FIXME: This is done on each write, find a way to avoid it, since it's only
-        ##        needed for the first time creation. Maybe create image using 1-curr_year
-        ##        or maybe checking to access to mailpath but I'm not so sure it's realable
         try:
             stat(self.image)
         except:
@@ -199,9 +207,9 @@ class Backend(BackendBase):
                 self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create Image file' % self.type)
                 return 0, 443, 'Internal Error (Image creation failed)'
 
-        if not self.initImage():
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot init Image' % self.type)
-            return 0, 443, 'Internal Error (Cannot init Image)'
+            if not self.initImage():
+                self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot init Image' % self.type)
+                return 0, 443, 'Internal Error (Cannot init Image)'
 
         error = None
         if not access(mailpath, F_OK | R_OK | W_OK):
