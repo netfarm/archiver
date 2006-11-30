@@ -29,6 +29,7 @@ from sys import platform, exc_info
 from os import path, access, makedirs, stat, F_OK, R_OK, W_OK
 from os import unlink, rename
 from errno import ENOSPC
+from anydbm import open as opendb
 from ConfigParser import ConfigParser
 from popen2 import Popen4
 from compress import CompressedFile, compressors
@@ -168,8 +169,14 @@ class Backend(BackendBase):
     def umount(self):
         return self.do_cmd(cmd_umount % { 'mountpoint' : self.mountpoint }, 'Cannot umount image')
 
-    def create(self, label):
-        ## TODO: update image table
+    def create(self, year, pid):
+        label = 'NMA-[%d-%d]' % (year, pid)
+        try:
+            self.hashdb = opendb(self.infohashdb, 'c')
+        except:
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot open the hashdb file' % self.type)
+            return False
+
         try:
             fd = open(self.image, 'wb')
             fd.seek((self.imagesize * 1024 * 1024) - 1)
@@ -178,7 +185,13 @@ class Backend(BackendBase):
         except:
             self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create the image file' % self.type)
             return False
-        return self.do_cmd(cmd_mke2fs % { 'label' : label, 'image' : self.image }, 'Cannot make image')
+
+        if self.do_cmd(cmd_mke2fs % { 'label' : label, 'image' : self.image }, 'Cannot make image'):
+            self.hashdb[label] = '%d|%d' % (year, pid)
+            self.hashdb.close()
+            return True
+
+        return False
 
     def prepare(self):
         return self.do_cmd(cmd_prepare % { 'user': self.user,
@@ -193,7 +206,7 @@ class Backend(BackendBase):
         if not self.umount():
             self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: umount failed' % self.type)
             return False
-            
+
         if not self.reseal():
             self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: reseal failed' % self.type)
             return False
@@ -221,8 +234,8 @@ class Backend(BackendBase):
             stat(self.image)
         except:
             self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Image not present, creting it' % self.type)
-            label = 'NMA-[%d-%d]' % (data['year'], data['pid'])
-            if not self.create(label):
+
+            if not self.create(data['year'], data['pid']):
                 self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create Image file' % self.type)
                 return 0, 443, 'Internal Error (Image creation failed)'
 
