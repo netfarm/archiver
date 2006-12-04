@@ -48,6 +48,24 @@ cmd_prepare='/usr/bin/sudo /usr/bin/install -d -m 755 -o %(user)s %(mountpoint)s
 class VFSError(Exception):
     pass
 
+def labelsort(a, b):
+    y1, p1 = a.split('|')
+    y2, p2 = b.split('|')
+
+    y1 = int(y1)
+    p1 = long(p1)
+    y2 = int(y2)
+    p2 = long(p2)
+
+    if y1 > y2: return 1
+    if y1 < y2: return -1
+
+    if p1 > p2: return 1
+    if p1 < p2: return -1
+
+    return 0
+
+##
 
 class Backend(BackendBase):
     """VFS Image Backend Class
@@ -69,7 +87,7 @@ class Backend(BackendBase):
 
         error = None
         try:
-            self.image = config.get(self.type, 'image')
+            self.baseimage = config.get(self.type, 'baseimage')
             self.mountpoint = config.get(self.type, 'mountpoint')
             self.infohashdb = config.get(self.type, 'infohashdb')
             self.archiverdir = config.get(self.type, 'archiverdir')
@@ -83,6 +101,7 @@ class Backend(BackendBase):
             self.LOG(E_ERR, 'Bad config file: %s' % error)
             raise BadConfig
 
+        self.image = self.baseimage + '.img'
         try:
             self.compression = config.get(self.type, 'compression')
         except:
@@ -152,6 +171,21 @@ class Backend(BackendBase):
                 return True
         return False
 
+    def getImagefile(self):
+        error = False
+        try:
+            hashdb = opendb(self.infohashdb, 'r')
+            s = hashdb.keys()
+            s.sort(lambda x, y: labelsort(x, y))
+            hashdb.close()
+        except:
+            error = True
+
+        if error or len(s) < 1:
+            raise VFSError, 'Error parsing label'
+
+        return self.baseimage + s.pop().replace('|', '-') + '.img'
+
     def do_cmd(self, cmd, text):
         self.LOG(E_TRACE, 'VFS Image Backend (%s): Executing [%s]' % (self.type, cmd))
         pipe = Popen4(cmd)
@@ -172,7 +206,7 @@ class Backend(BackendBase):
     def create(self, year, pid):
         label = 'NMA-[%d-%d]' % (year, pid)
         try:
-            self.hashdb = opendb(self.infohashdb, 'c')
+            hashdb = opendb(self.infohashdb, 'c')
         except:
             self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot open the hashdb file' % self.type)
             return False
@@ -187,8 +221,9 @@ class Backend(BackendBase):
             return False
 
         if self.do_cmd(cmd_mke2fs % { 'label' : label, 'image' : self.image }, 'Cannot make image'):
-            self.hashdb[label] = '%d|%d' % (year, pid)
-            self.hashdb.close()
+            key = '%d|%d' % (year, pid)
+            hashdb[key] = label
+            hashdb.close()
             return True
 
         return False
@@ -212,7 +247,7 @@ class Backend(BackendBase):
             return False
 
         try:
-            rename(self.image, self.image + '.FIXME')
+            rename(self.image, self.getImagefile())
         except:
             self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: rename failed' % self.type)
             return False
