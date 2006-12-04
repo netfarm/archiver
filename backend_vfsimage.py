@@ -87,7 +87,7 @@ class Backend(BackendBase):
 
         error = None
         try:
-            self.baseimage = config.get(self.type, 'baseimage')
+            self.imagebase= config.get(self.type, 'imagebase')
             self.mountpoint = config.get(self.type, 'mountpoint')
             self.infohashdb = config.get(self.type, 'infohashdb')
             self.archiverdir = config.get(self.type, 'archiverdir')
@@ -101,7 +101,7 @@ class Backend(BackendBase):
             self.LOG(E_ERR, 'Bad config file: %s' % error)
             raise BadConfig
 
-        self.image = self.baseimage + '.img'
+        self.image = self.imagebase + '.img'
         try:
             self.compression = config.get(self.type, 'compression')
         except:
@@ -184,7 +184,7 @@ class Backend(BackendBase):
         if error or len(s) < 1:
             raise VFSError, 'Error parsing label'
 
-        return self.baseimage + s.pop().replace('|', '-') + '.img'
+        return self.imagebase + s.pop().replace('|', '-') + '.img'
 
     def do_cmd(self, cmd, text):
         self.LOG(E_TRACE, 'VFS Image Backend (%s): Executing [%s]' % (self.type, cmd))
