@@ -184,7 +184,7 @@ class Backend(BackendBase):
         if error or len(s) < 1:
             raise VFSError, 'Error parsing label'
 
-        return self.imagebase + s.pop().replace('|', '-') + '.img'
+        return '%s-%s.img' % (self.imagebase, '-'.join(s.pop().split('|')))
 
     def do_cmd(self, cmd, text):
         self.LOG(E_TRACE, 'VFS Image Backend (%s): Executing [%s]' % (self.type, cmd))
