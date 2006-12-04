@@ -212,9 +212,9 @@ class Backend(BackendBase):
             return False
 
         try:
-            rename(self.image, 'FIXME')
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: rename failed' % self.type)
+            rename(self.image, self.image + '.FIXME')
         except:
+            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: rename failed' % self.type)
             return False
 
         return True
@@ -266,30 +266,35 @@ class Backend(BackendBase):
             data['mail'] = comp.getdata()
             comp.close()
 
+        error_no = 0
         try:
             fd = open(filename, 'wb')
             fd.write(data['mail'])
-            fd.flush()
-            fd.close()
-            self.LOG(E_TRACE, 'VFS Image Backend (%s): wrote %s' % (self.type, filename))
-            return BACKEND_OK
         except:
             t, val, tb = exc_info()
-            del tb
-            if val.errno == ENOSPC:
-                try:
-                    unlink(filename)
-                except:
-                    pass
+            error_no = val.errno
+
+        try: fd.close()
+        except: pass
+
+        ## An error occurred unlink file and check if the volume is full
+        if error_no:
+            try: unlink(filename)
+            except: pass
+
+            if error_no == ENOSPC:
                 if not self.recycle():
                     self.LOG(E_ERR, 'VFS Image Backend (%s): Error recycling Image' % self.type)
                     return 0, 443, 'Internal Error (Recycling failed)'
 
                 self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Recycled Image File, write postponed' % self.type)
                 return 0, 443, 'Recycling volume'
+            else:
+                self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot write mail file: %s' % (self.type, str(val)))
+                return 0, 443, '%s: %s' % (t, val)
 
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot write mail file: %s' % (self.type, str(val)))
-            return 0, 443, '%s: %s' % (t, val)
+        self.LOG(E_TRACE, 'VFS Image Backend (%s): wrote %s' % (self.type, filename))
+        return BACKEND_OK
 
     def shutdown(self):
         """Backend Shutdown callback"""
