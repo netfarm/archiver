@@ -1,4 +1,4 @@
-content_filter = lmtp:unix:/var/lib/archiver/lmtp_archive
+content_filter = smtp:localhost:10025
 mailbox_transport = lmtp:unix:/var/run/cyrus/socket/lmtp
 
 # UCE

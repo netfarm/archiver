@@ -1,5 +1,5 @@
 localhost:10025          inet n  -       n       -       -  smtpd
-   -o content_filter=lmtp:unix:/var/lib/archiver/lmtp_storage
+   -o content_filter=smtp:localhost:10026
    -o local_recipient_maps=
    -o relay_recipient_maps=
    -o smtpd_restriction_classes=
