@@ -806,7 +806,7 @@ def StageHandler(config, stage_type):
             data = self.add_aid(data, msg, aid)
             if mid is not None:
                 LOG(E_TRACE, '%s: inserting %s msg in hashdb' % (self.type, aid))
-                self.hashdb[mid]=aid
+                self.hashdb[mid] = aid
                 self.hashdb.sync()
             ## Next hop
             LOG(E_TRACE, '%s: backend worked fine' % self.type)
