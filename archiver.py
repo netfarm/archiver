@@ -514,7 +514,10 @@ def StageHandler(config, stage_type):
 
                 if mid is not None and self.hashdb.has_key(mid):
                     LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
-                    del self.hashdb[mid]
+                    try:
+                        del self.hashdb[mid]
+                    except:
+                        pass
                     self.hashdb.sync()
 
                 return self.do_exit(250, okmsg, 200)
@@ -536,7 +539,10 @@ def StageHandler(config, stage_type):
 
                 LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
                 ## FIXME - I'm right doing this?
-                del self.hashdb[mid]
+                try:
+                    del self.hashdb[mid]
+                except:
+                    pass
                 self.hashdb.sync()
                 return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
 
