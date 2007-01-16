@@ -29,6 +29,7 @@ aliases = '/etc/postfix/aliases.db'
 virtual = '/etc/postfix/virtual.db'
 
 def lookup_alias(dba, bc, alias):
+    if alias.find('@') != -1: return [] # External
     al = dba.get(alias, None)
     if al is None:
         return [alias[:-1].strip()]
@@ -52,7 +53,6 @@ def lookup(dba, dbv, email):
         return []
     if mbox.find('@') != -1: # External
         return []
-
     bc = []
     return lookup_alias(dba, bc, mbox)
 
@@ -61,11 +61,13 @@ def mblookup(emails):
     dba = opendb(aliases, 'r')
     dbv = opendb(virtual, 'r')
 
-    results = []
-
+    res = []
     for email in emails:
-        results = results + lookup(dba, dbv, email)
-
+        res = res + lookup(dba, dbv, email)
     dba.close()
     dbv.close()
-    return results
+
+    # Uniq
+    result = {}
+    for r in res: result[r] = True
+    return result.keys()
