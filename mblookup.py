@@ -28,6 +28,22 @@ import sys
 aliases = '/etc/postfix/aliases.db'
 virtual = '/etc/postfix/virtual.db'
 
+def lookup_alias(dba, bc, alias):
+    al = dba.get(alias, None)
+    if al is None:
+        return [alias[:-1].strip()]
+
+    alist = al[:-1].strip().split(',')
+    if len(alist) == 1: return [al[:-1].strip()]
+    res = []
+    for al in alist:
+        al = al.strip()
+        if al in bc: return [] # Loop
+        bc.append(al)
+        al = al + '\x00'
+        res = res + lookup_alias(dba, bc, al)
+    return res
+
 def lookup(dba, dbv, email):
     email = email + '\x00'
     mbox = dbv.get(email, None)
@@ -37,19 +53,8 @@ def lookup(dba, dbv, email):
     if mbox.find('@') != -1: # External
         return []
 
-    alias = dba.get(mbox, None)
-    if alias is None: # A mailbox
-        return [mbox[:-1].strip()]
-
-    alias = alias.replace('\x00', '').strip()
-    res = []
-
-    aliases = alias.split(',')
-    for alias in aliases:
-        alias = alias.strip()
-        if alias.find('@') == -1:
-            res.append(alias)
-    return res
+    bc = []
+    return lookup_alias(dba, bc, mbox)
 
 # Postfix db files
 def mblookup(emails):
