@@ -2,8 +2,8 @@
 #
 # Netfarm Mail Archiver - release 2
 #
-# Copyright (C) 2005-2006 Gianluigi Tiesi <sherpya@netfarm.it>
-# Copyright (C) 2005-2006 NetFarm S.r.l.  [http://www.netfarm.it]
+# Copyright (C) 2005-2007 Gianluigi Tiesi <sherpya@netfarm.it>
+# Copyright (C) 2005-2007 NetFarm S.r.l.  [http://www.netfarm.it]
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by the
