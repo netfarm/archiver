@@ -19,8 +19,8 @@
 ## @file backend_xmlrpc.py
 ## XMLrpc Storage and Archive Backend
 
-__doc__ = '''Netfarm Archiver - release 2.0.0 - XmlRpc backend'''
-__version__ = '2.0.0'
+__doc__ = '''Netfarm Archiver - release 2.1.0 - XmlRpc backend'''
+__version__ = '2.1.0'
 __all__ = [ 'Backend' ]
 
 from archiver import *

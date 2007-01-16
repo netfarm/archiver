@@ -18,8 +18,8 @@
 ## @file compress.py
 ## Helper for file compression
 
-__doc__ = '''Netfarm Archiver - release 2.0.0 - Postfix mailbox lookup'''
-__version__ = '2.0.0'
+__doc__ = '''Netfarm Archiver - release 2.1.0 - Postfix mailbox lookup'''
+__version__ = '2.1.0'
 __all__ = [ 'mblookup' ]
 
 from anydbm import open as opendb

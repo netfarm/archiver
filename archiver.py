@@ -19,8 +19,8 @@
 ## @file archiver.py
 ## Netfarm Mail Archiver [core]
 
-__doc__ = '''Netfarm Archiver relase 2.0.0 - Main worker'''
-__version__ = '2.0.0'
+__doc__ = '''Netfarm Archiver release 2.1.0 - Main worker'''
+__version__ = '2.1.0'
 __all__ = [ 'BackendBase',
             'StorageTypeNotSupported',
             'BadConfig',

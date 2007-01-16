@@ -18,8 +18,8 @@
 ## @file compress.py
 ## Helper for file compression
 
-__doc__ = '''Netfarm Archiver - release 2.0.0 - Helper for file compression'''
-__version__ = '2.0.0'
+__doc__ = '''Netfarm Archiver - release 2.1.0 - Helper for file compression'''
+__version__ = '2.1.0'
 __all__ = [ 'CompressedFile', 'compressors' ]
 
 from cStringIO import StringIO

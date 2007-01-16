@@ -1,4 +1,4 @@
-VERSION=2.0.0
+VERSION=2.1.0
 PYTHON_VERSION=$(shell python -c 'import sys ; print sys.version[:3]')
 
 DIST=archiver-$(VERSION).tar.gz

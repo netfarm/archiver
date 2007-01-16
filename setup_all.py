@@ -45,7 +45,7 @@ nma = dict(
     company_name = 'Netfarm S.r.l.',
     copyright = 'Copyright (C) 2007 Gianluigi Tiesi',
     comments = 'Netfarm Mail Archiver',
-    icon_resources = [(1, "nma.ico")],
+    icon_resources = [(1, 'nma.ico')],
     modules = ['archiver_svc']
 )
 
@@ -53,19 +53,19 @@ archiver = dict(
     company_name = 'Netfarm S.r.l.',
     copyright = 'Copyright (C) 2007 Gianluigi Tiesi',
     comments = 'Netfarm Mail Archiver',
-    icon_resources = [(1, "nma.ico")],
+    icon_resources = [(1, 'nma.ico')],
     script = 'archiver.py'
 )
 
 if len(sys.argv)==1 or \
    (len(sys.argv)==2 and sys.argv[1] in ['-q', '-n']):
-    sys.argv.append("py2exe")
+    sys.argv.append('py2exe')
 
-setup(name = "nma.py",
-      version = "2.0.0",
-      description = "Netfarm Mail Archiver",
+setup(name = 'nma.py',
+      version = '2.1.0',
+      description = 'Netfarm Mail Archiver',
       service = [nma],
       console = [archiver],
-      options = {"py2exe" : py2exe_options},
-      zipfile = "nma.zip",
+      options = {'py2exe' : py2exe_options},
+      zipfile = 'nma.zip',
 )
