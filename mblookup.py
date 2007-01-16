@@ -64,10 +64,11 @@ def mblookup(emails):
     res = []
     for email in emails:
         res = res + lookup(dba, dbv, email)
+
     dba.close()
     dbv.close()
 
-    # Uniq
+    # Unique mbox
     result = {}
     for r in res: result[r] = True
     return result.keys()
