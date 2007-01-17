@@ -233,6 +233,20 @@ class Backend(BackendBase):
                 self.LOG(E_ERR, 'PGSQL Backend: the query was: ' + qs)
                 return 0, 443, '%s: Internal Server Error' % t
 
+
+    def parse_recipients(self, recipients):
+        result = []
+        for recipient in recipients:
+            try:
+                dlog, ddom = recipient[1].split('@', 1)
+            except:
+                self.LOG(E_ERR, 'Error parsing to/cc: ' + recipient[1])
+                dlog = recipient[1]
+                ddom = recipient[1]
+
+            result.append({'to_login': dlog, 'to_domain': ddom })
+        return result
+
     def process_archive(self, data):
         """process data from archiver main process
 
@@ -249,22 +263,30 @@ class Backend(BackendBase):
         subject = sql_quote(mime_decode_header(data['m_sub'])[:252])
         date = sql_quote(asctime(data['m_date']))
 
+        try:
+            slog, sdom = data['m_from'][1].split('@')
+            slog = slog.strip()
+            sdom = sdom.strip()
+        except:
+            return 0, 443, 'Error splitting From address'
+
         values = { 'message_id': sql_quote(data['m_mid'][:508]),
                    'from_login': sql_quote(slog[:28]),
                    'from_domain': sql_quote(sdom[:255]),
                    'subject': sql_quote(subject[:252]),
                    'date': date,
                    'attachments': nattach }
-                        
 
-        ## Parse data['recipients']
-        ## mbolookup on recipients
-        recipients = parse_recipients(data['recipients'])
-        mboxes = mblookup(data['recipients'])
+        addrs = data['m_to'] + data['m_cc']
+        recipients = self.parse_recipients(addrs)
+        mbcheck = data['m_from'][1]
+        for addr in addrs:
+            mbcheck.append(addr[1])
+        mboxes = mblookup(addrs)
 
         qs = mail_template % values
 
-        for recipient in recipients
+        for recipient in recipients:
             qs = qs + recipient_template % recipient
 
         for mailbox in mboxes:
@@ -272,7 +294,7 @@ class Backend(BackendBase):
 
         qs = qs + 'COMMIT;'
 
-        year, pid, result = self.do_query(self.query[0], True, True)
+        year, pid, result = self.do_query(qs, True, True)
         return year, pid, result
 
     ### Disabled for now
@@ -282,13 +304,13 @@ class Backend(BackendBase):
         The query doesn't return rows but only result code
         @param data: is a dict containg year, pid and mail from archiver
         @return: result code"""
-        msg = { 'year': data['year'],
-                'pid' : data['pid'],
-                'message_id' : data['mid'][:508],
-                'mail': encodestring(data['mail'])
-                }
+        #msg = { 'year': data['year'],
+        #        'pid' : data['pid'],
+        #        'message_id' : data['mid'][:508],
+        #        'mail': encodestring(data['mail'])
+        #        }
 
-        return self.do_query(self.query[0] % msg)
+        return 0, 443, 'Unimplemented'
 
     def shutdown(self):
         """shutdown the PGSQL stage

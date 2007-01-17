@@ -692,6 +692,10 @@ def StageHandler(config, stage_type):
             except:
                 return self.do_exit(443, 'Error parsing addrlist From: %s' % msg.get('From', None))
 
+            ## Only one From address is allowed
+            if len(m_from) > 1:
+                return self.do_exit(443, 'Only one From address is allowed')
+
             ## Empty From field use sender
             if len(m_from) == 0:
                 LOG(E_ERR, '%s: no From header in mail using sender' % self.type)
@@ -699,6 +703,9 @@ def StageHandler(config, stage_type):
                     m_from = parseaddr(sender)
                 except:
                     return self.do_exit(552, 'Mail has not suitable From/Sender')
+            else:
+                ## it's better to have m_from as single tuple
+                m_from = mfrom[0]
 
             ## Extraction of To field
             try:
@@ -723,7 +730,7 @@ def StageHandler(config, stage_type):
                 LOG(E_ERR, '%s: cannot parse %s' % (self.type, sender))
                 check_sender = []
 
-            for addr in m_from + m_to + check_sender:
+            for addr in [m_from] + m_to + check_sender:
                 try:
                     base = addr[1].split('@')[0]
                 except:
@@ -736,16 +743,10 @@ def StageHandler(config, stage_type):
             ## Sender size limit check
             ## FIXME: values are cached - so I need to reopen the file
             if quotatbl is not None:
-                for addr in m_from:
-                    try:
-                        checkfrom = addr[1]
-                    except:
-                        checkfrom = str(addr)
-                    checkfrom = checkfrom.lower()
-                    ## from bytes to kb
-                    size = size >> 10
-                    if not quota_check(checkfrom, size):
-                        return self.do_exit(422, 'Sender quota execeded')
+                ## from bytes to kb
+                size = size >> 10
+                if not quota_check(m_from[1], size): # .lower() ??
+                    return self.do_exit(422, 'Sender quota execeded')
 
             ## Extraction of Cc field
             try:
