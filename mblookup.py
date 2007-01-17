@@ -59,7 +59,7 @@ def lookup(dba, dbv, email):
 # Postfix db files
 def mblookup(emails):
     if platform == 'win32': return [] # assume no mailbox on win32
-    
+
     dba = opendb(aliases, 'r')
     dbv = opendb(virtual, 'r')
 
