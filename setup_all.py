@@ -30,7 +30,7 @@ except ImportError:
 from distutils.core import setup
 import py2exe
 
-backends = [ 'backend_filesystem', 'backend_rdbms', 'backend_rdbms', 'backend_xmlrpc', 'backend_vfsimage.py' ]
+backends = [ 'backend_filesystem', 'backend_pgsql', 'backend_xmlrpc', 'backend_vfsimage.py' ]
 psycopg = [ 'psycopg', 'mx.DateTime']
 deps = backends + psycopg + ['lmtp'] + ['dbhash']
 

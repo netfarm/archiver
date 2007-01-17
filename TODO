@@ -76,3 +76,5 @@ TODO 2.x:
   to avoid reloading each check
 - make compression ratio check in various compressors
 - check backend_xmlrpc, new version is totally untested
+- complete backend_pgsql and use new sql for mail
+- remove sql storage backend?
