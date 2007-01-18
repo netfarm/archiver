@@ -514,11 +514,9 @@ def StageHandler(config, stage_type):
 
                 if mid is not None and self.hashdb.has_key(mid):
                     LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
-                    try:
+                    if self.hashdb.has_key(mid):
                         del self.hashdb[mid]
-                    except:
-                        pass
-                    self.hashdb.sync()
+                        self.hashdb.sync()
 
                 return self.do_exit(250, okmsg, 200)
             else:
@@ -538,12 +536,9 @@ def StageHandler(config, stage_type):
                     return self.do_exit(443, 'All recipients were rejected by the mailserver')
 
                 LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
-                ## FIXME - I'm right doing this?
-                try:
+                if self.hashdb.has_key(mid):
                     del self.hashdb[mid]
-                except:
-                    pass
-                self.hashdb.sync()
+                    self.hashdb.sync()
                 return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
 
         def do_exit(self, code, msg='', extcode=None):
@@ -705,7 +700,7 @@ def StageHandler(config, stage_type):
                     return self.do_exit(552, 'Mail has not suitable From/Sender')
             else:
                 ## it's better to have m_from as single tuple
-                m_from = mfrom[0]
+                m_from = m_from[0]
 
             ## Extraction of To field
             try:
