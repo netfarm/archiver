@@ -30,27 +30,29 @@ from base64 import encodestring
 from psycopg2 import connect as db_connect
 from mblookup import mblookup
 
-mail_template = """BEGIN;
+mail_template = """
 INSERT INTO mail (
     mail_id,
-    "year",
+    year,
     pid,
     message_id,
     from_login,
     from_domain,
     subject,
     mail_date,
-    attachment
+    attachment,
+    media
 ) VALUES (
-    get_new_mail_id(),
+    get_next_mail_id(),
     get_curr_year(),
     get_new_pid(),
     '%(message_id)s',
     '%(from_login)s',
     '%(from_domain)s',
     '%(subject)s',
-    '%(mail_date)s',
-    %(attachment)s
+    '%(date)s',
+    %(attachment)s,
+    NULL
 );
 """
 
@@ -99,7 +101,7 @@ def format_msg(msg):
     @param msg: is the original object for error message
     @return: formatted message"""
     msg = str(msg)
-    if len(msg)>256:
+    if len(msg) > 256:
         msg = msg[:256] + '...(message too long)'
     msg = ', '.join(msg.strip().split('\n'))
     msg = msg.replace('\t', '')
@@ -171,26 +173,14 @@ class Backend(BackendBase):
         except:
             ## We can work without the db connection and call it when needed
             t, val, tb = exc_info()
-            del tb
+            del t, tb
             error = format_msg(val)
 
         if error is not None:
             self.LOG(E_ERR, 'PGSQL Backend: connection to database failed: ' + error)
             raise ConnectionError, error
 
-        ## Disable autocommit
-        try:
-            self.connection.set_isolation_level(2)
-        except:
-            t, val, tb = exc_info()
-            del t, tb
-            error = format_msg(val)
-
-        if error is not None:
-            self.LOG(E_ERR, 'PGSQL Backend: cannot disable autocommit on the DB connection: ' + error)
-            self.close()
-            raise ConnectionError, error
-
+        self.connection.set_isolation_level(0)
         self.cursor = self.connection.cursor()
         self.LOG(E_TRACE, 'PGSQL Backend: I\'ve got a cursor from the driver')
 
@@ -205,6 +195,7 @@ class Backend(BackendBase):
                  pid has the code, message contains a more detailed explanation"""
         try:
             self.cursor.execute(qs)
+            self.connection.commit()
             if fetch:
                 res = self.cursor.fetchone()
                 return res[1], res[0], 'Ok'
@@ -213,7 +204,8 @@ class Backend(BackendBase):
         except:
             try:
                 self.connection.rollback()
-            except: pass
+            except:
+                self.LOG(E_ERR, 'PGSQL Backend: rollback failed')
             self.LOG(E_ERR, 'PGSQL Backend: query fails')
             if autorecon:
                 self.LOG(E_ERR, 'PGSQL Backend: Trying to reopen DB Connection')
@@ -231,7 +223,7 @@ class Backend(BackendBase):
                 msg = format_msg(val)
                 self.LOG(E_ERR, 'PGSQL Backend: Cannot execute query: ' + msg)
                 self.LOG(E_ERR, 'PGSQL Backend: the query was: ' + qs)
-                return 0, 443, '%s: Internal Server Error' % t
+                return 0, 443, 'PGSQL Backend: %s: Internal Server Error' % t
 
 
     def parse_recipients(self, recipients):
@@ -240,7 +232,7 @@ class Backend(BackendBase):
             try:
                 dlog, ddom = recipient[1].split('@', 1)
             except:
-                self.LOG(E_ERR, 'Error parsing to/cc: ' + recipient[1])
+                self.LOG(E_ERR, 'PGSQL Backend: Error parsing to/cc: ' + recipient[1])
                 dlog = recipient[1]
                 ddom = recipient[1]
 
@@ -275,14 +267,15 @@ class Backend(BackendBase):
                    'from_domain': sql_quote(sdom[:255]),
                    'subject': sql_quote(subject[:252]),
                    'date': date,
-                   'attachments': nattach }
+                   'attachment': nattach }
 
         addrs = data['m_to'] + data['m_cc']
         recipients = self.parse_recipients(addrs)
-        mbcheck = data['m_from'][1]
+        mbcheck = []
+        mbcheck.append(data['m_from'][1])
         for addr in addrs:
             mbcheck.append(addr[1])
-        mboxes = mblookup(addrs)
+        mboxes = mblookup(mbcheck)
 
         qs = mail_template % values
 
@@ -292,9 +285,9 @@ class Backend(BackendBase):
         for mailbox in mboxes:
             qs = qs + authorized_template % mailbox
 
-        qs = qs + 'COMMIT;'
+        qs = qs + 'SELECT pid, year from mail_pid;'
 
-        year, pid, result = self.do_query(qs, True, True)
+        year, pid, result  = self.do_query(qs, True, True)
         return year, pid, result
 
     ### Disabled for now
