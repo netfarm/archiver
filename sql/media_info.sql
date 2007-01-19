@@ -11,5 +11,5 @@ SELECT nextval('media_id_sequence') as result;
 $$ LANGUAGE sql;
 
 CREATE FUNCTION get_curr_media() RETURNS bigint AS $$
-SELECT lastvalue as results from media_id_sequence;
+SELECT last_value as results from media_id_sequence;
 $$ LANGUAGE sql;
