@@ -29,6 +29,8 @@ from xmlrpclib import ServerProxy, Error
 from urlparse import urlparse
 from time import mktime
 
+_prefix = 'XmlRpc Backend: '
+
 ##
 class BadUrlSyntax(Exception):
     """BadUrlSyntax Bad url syntax in config file"""

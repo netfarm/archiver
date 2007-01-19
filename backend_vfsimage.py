@@ -33,6 +33,7 @@ from anydbm import open as opendb
 from ConfigParser import ConfigParser
 from popen2 import Popen4
 from compress import CompressedFile, compressors
+from backend_pgsql import sql_quote, format_msg, Backend as BackendPGSQL
 
 ### /etc/sudoers
 # user ALL = NOPASSWD:/bin/mount,/bin/umount,/usr/bin/install
@@ -67,12 +68,21 @@ def labelsort(a, b):
 
 ##
 
-class Backend(BackendBase):
+class Backend(BackendPGSQL):
     """VFS Image Backend Class
 
     Stores emails on filesystem image"""
     def __init__(self, config, stage_type, ar_globals):
         """The constructor"""
+
+        self._prefix = 'VFSImage Backend: '
+
+        ### Init PGSQL Backend
+        BackendPGSQL.__init__(self, config, 'archive', ar_globals, self._prefix)
+        # Avoid any chance to call uneeded methods
+        self.process_archive = None
+        self.parse_recipients = None
+
         self.config = config
         self.type = stage_type
 
@@ -98,7 +108,7 @@ class Backend(BackendBase):
             error = str(val)
 
         if error is not None:
-            self.LOG(E_ERR, 'Bad config file: %s' % error)
+            self.LOG(E_ERR, self._prefix + 'Bad config file: %s' % error)
             raise BadConfig
 
         self.image = self.imagebase + '.img'
@@ -121,16 +131,15 @@ class Backend(BackendBase):
                 error = 'Unparsable compression entry in config file'
 
         if error is not None:
-            self.LOG(E_ERR, 'Invalid compression option: %s' % error)
+            self.LOG(E_ERR, self._prefix + 'Invalid compression option: %s' % error)
             raise BadConfig, 'Invalid compression option'
 
         if not access(self.mountpoint, F_OK | R_OK | W_OK):
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Mount point is not accessible: %s' %
-                     (self.type, self.mountpoint))
+            self.LOG(E_ERR, self._prefix + 'Mount point is not accessible: %s' % self.mountpoint)
             raise VFSError, 'Mount point is not accessible'
 
         if self.isMounted():
-            self.LOG(E_ERR, 'Image already mounted')
+            self.LOG(E_ERR, self._prefix + 'Image already mounted')
             if not self.umount():
                 raise VFSError, 'Cannot umount image'
 
@@ -143,17 +152,18 @@ class Backend(BackendBase):
         if isPresent and not self.initImage():
             raise VFSError, 'Cannot init Image'
         else:
-            self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Image init postponed ' % self.type)
+            self.LOG(E_ALWAYS, self._prefix + 'Image init postponed')
 
-        self.LOG(E_ALWAYS, 'VFS Image Backend (%s) at %s' % (self.type, self.image))
+
+        self.LOG(E_ALWAYS, self._prefix + '(%s) at %s' % (self.type, self.image))
 
     def initImage(self):
         if not self.mount():
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot mount image' % self.type)
+            self.LOG(E_ERR, self._prefix + 'Cannot mount image')
             return False
 
         if not self.prepare():
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Image preparation failed' % self.type)
+            self.LOG(E_ERR, self._prefix + 'Image preparation failed')
             return False
 
         return True
@@ -162,7 +172,7 @@ class Backend(BackendBase):
         try:
             mounts = open('/proc/mounts').readlines()
         except:
-            self.LOG(E_ERR, 'Cannot open /proc/mounts, /proc not mounted?')
+            self.LOG(E_ERR, self._prefix + 'Cannot open /proc/mounts, /proc not mounted?')
             return False
 
         for mp in mounts:
@@ -187,14 +197,14 @@ class Backend(BackendBase):
         return '%s-%s.img' % (self.imagebase, '-'.join(s.pop().split('|')))
 
     def do_cmd(self, cmd, text):
-        self.LOG(E_TRACE, 'VFS Image Backend (%s): Executing [%s]' % (self.type, cmd))
+        self.LOG(E_TRACE, self._prefix + 'Executing [%s]' % cmd)
         pipe = Popen4(cmd)
         code = pipe.wait()
         res = pipe.fromchild.read()
         if code:
-            self.LOG(E_ERR, 'VFS Image Backend (%s): %s (%s)' % (self.type, text, res.strip()))
+            self.LOG(E_ERR, self._prefix + '%s (%s)' % (text, res.strip()))
             return False
-        self.LOG(E_TRACE, 'VFS Image Backend (%s): Command output: [%s]' % (self.type, res.strip()))
+        self.LOG(E_TRACE, self._prefix + 'Command output: [%s]' % res.strip())
         return True
 
     def mount(self):
@@ -208,7 +218,7 @@ class Backend(BackendBase):
         try:
             hashdb = opendb(self.infohashdb, 'c')
         except:
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot open the hashdb file' % self.type)
+            self.LOG(E_ERR, self._prefix + 'Cannot open the hashdb file')
             return False
 
         try:
@@ -217,7 +227,7 @@ class Backend(BackendBase):
             fd.write(chr(0))
             fd.close()
         except:
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create the image file' % self.type)
+            self.LOG(E_ERR, self._prefix + 'Cannot create the image file')
             return False
 
         if self.do_cmd(cmd_mke2fs % { 'label' : label, 'image' : self.image }, 'Cannot make image'):
@@ -239,17 +249,17 @@ class Backend(BackendBase):
 
     def recycle(self):
         if not self.umount():
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: umount failed' % self.type)
+            self.LOG(E_ERR, self._prefix + 'Recycle: umount failed')
             return False
 
         if not self.reseal():
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: reseal failed' % self.type)
+            self.LOG(E_ERR, self._prefix + 'Recycle: reseal failed')
             return False
 
         try:
             rename(self.image, self.getImagefile())
         except:
-            self.LOG(E_ERR, 'VFS Image Backend (%s): Recycle: rename failed' % self.type)
+            self.LOG(E_ERR, self._prefix + 'Recycle: rename failed')
             return False
 
         return True
@@ -268,14 +278,14 @@ class Backend(BackendBase):
         try:
             stat(self.image)
         except:
-            self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Image not present, creting it' % self.type)
+            self.LOG(E_ALWAYS, self._prefix + 'Image not present, creting it')
 
             if not self.create(data['year'], data['pid']):
-                self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create Image file' % self.type)
+                self.LOG(E_ERR, self._prefix + 'Cannot create Image file')
                 return 0, 443, 'Internal Error (Image creation failed)'
 
             if not self.initImage():
-                self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot init Image' % self.type)
+                self.LOG(E_ERR, self._prefix + 'Cannot init Image')
                 return 0, 443, 'Internal Error (Cannot init Image)'
 
         error = None
@@ -288,8 +298,7 @@ class Backend(BackendBase):
                 t, val, tb = exc_info()
                 del tb
                 error = '%s: %s' % (t, val)
-                self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot create storage directory: %s' %
-                         (self.type, str(val)))
+                self.LOG(E_ERR, self._prefix + 'Cannot create storage directory: %s' % str(val))
 
         if error is not None:
             return 0, 443, error
@@ -319,23 +328,25 @@ class Backend(BackendBase):
 
             if error_no == ENOSPC:
                 if not self.recycle():
-                    self.LOG(E_ERR, 'VFS Image Backend (%s): Error recycling Image' % self.type)
+                    self.LOG(E_ERR, self._prefix + 'Error recycling Image')
                     return 0, 443, 'Internal Error (Recycling failed)'
 
-                self.LOG(E_ALWAYS, 'VFS Image Backend (%s): Recycled Image File, write postponed' % self.type)
+                self.LOG(E_ALWAYS, self._prefix + 'Recycled Image File, write postponed')
                 return 0, 443, 'Recycling volume'
             else:
-                self.LOG(E_ERR, 'VFS Image Backend (%s): Cannot write mail file: %s' % (self.type, str(val)))
+                self.LOG(E_ERR, self._prefix + 'Cannot write mail file: %s' % str(val))
                 return 0, 443, '%s: %s' % (t, val)
 
-        self.LOG(E_TRACE, 'VFS Image Backend (%s): wrote %s' % (self.type, filename))
+        self.LOG(E_TRACE, self._prefix + 'wrote %s' % filename)
         return BACKEND_OK
 
     def shutdown(self):
         """Backend Shutdown callback"""
-        self.LOG(E_ALWAYS, 'VFS Backend (%s): shutting down' % self.type)
+        self.LOG(E_ALWAYS, self._prefix + '(%s): shutting down' % self.type)
         try:
             stat(self.image)
             self.umount()
         except:
             pass
+        ## Shutdown PGSQL Backend
+        BackendPGSQL.shutdown(self)

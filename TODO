@@ -78,3 +78,4 @@ TODO 2.x:
 - check backend_xmlrpc, new version is totally untested
 - complete backend_pgsql and use new sql for mail
 - remove sql storage backend?
+- uniform backend error messages

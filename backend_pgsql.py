@@ -119,10 +119,14 @@ class Backend(BackendBase):
     """PGSQL Backend uses PostgreSQL database
 
         This backend can be used either as Storage either as Archive"""
-    def __init__(self, config, stage_type, ar_globals):
+    def __init__(self, config, stage_type, ar_globals, prefix = None):
         """The constructor
 
         Initialize a connection to pgsql"""
+        if prefix is None:
+            self._prefix = 'PGSQL Backend: '
+        else:
+            self._prefix = prefix
         self.config = config
         self.type = stage_type
         self.LOG = ar_globals['LOG']
@@ -148,7 +152,8 @@ class Backend(BackendBase):
         try:
             self.connect()
         except: pass
-        self.LOG(E_ALWAYS, 'PGSQL Backend (%s) at %s' % (self.type, host))
+        if prefix is None:
+            self.LOG(E_ALWAYS, self._prefix + '(%s) at %s' % (self.type, host))
 
     def close(self):
         """closes the cursor and the connection"""
@@ -177,12 +182,12 @@ class Backend(BackendBase):
             error = format_msg(val)
 
         if error is not None:
-            self.LOG(E_ERR, 'PGSQL Backend: connection to database failed: ' + error)
+            self.LOG(E_ERR, self._prefix + 'connection to database failed: ' + error)
             raise ConnectionError, error
 
         self.connection.set_isolation_level(0)
         self.cursor = self.connection.cursor()
-        self.LOG(E_TRACE, 'PGSQL Backend: I\'ve got a cursor from the driver')
+        self.LOG(E_TRACE, self._prefix + 'I\'ve got a cursor from the driver')
 
     def do_query(self, qs, fetch=False, autorecon=False):
         """execute a query
@@ -205,10 +210,10 @@ class Backend(BackendBase):
             try:
                 self.connection.rollback()
             except:
-                self.LOG(E_ERR, 'PGSQL Backend: rollback failed')
-            self.LOG(E_ERR, 'PGSQL Backend: query fails')
+                self.LOG(E_ERR, self._prefix + 'rollback failed')
+            self.LOG(E_ERR, self._prefix + 'query fails')
             if autorecon:
-                self.LOG(E_ERR, 'PGSQL Backend: Trying to reopen DB Connection')
+                self.LOG(E_ERR, self._prefix + 'Trying to reopen DB Connection')
                 error = None
                 try:
                     self.connect()
@@ -221,10 +226,9 @@ class Backend(BackendBase):
                 t, val, tb = exc_info()
                 del tb
                 msg = format_msg(val)
-                self.LOG(E_ERR, 'PGSQL Backend: Cannot execute query: ' + msg)
-                self.LOG(E_ERR, 'PGSQL Backend: the query was: ' + qs)
-                return 0, 443, 'PGSQL Backend: %s: Internal Server Error' % t
-
+                self.LOG(E_ERR, self._prefix + 'Cannot execute query: ' + msg)
+                self.LOG(E_ERR, self._prefix + 'the query was: ' + qs)
+                return 0, 443, '%s: Internal Server Error' % t
 
     def parse_recipients(self, recipients):
         result = []
@@ -232,7 +236,7 @@ class Backend(BackendBase):
             try:
                 dlog, ddom = recipient[1].split('@', 1)
             except:
-                self.LOG(E_ERR, 'PGSQL Backend: Error parsing to/cc: ' + recipient[1])
+                self.LOG(E_ERR, self._prefix + 'Error parsing to/cc: ' + recipient[1])
                 dlog = recipient[1]
                 ddom = recipient[1]
 
@@ -310,4 +314,4 @@ class Backend(BackendBase):
 
         closes the pgsql connection and the stage Thread"""
         self.close()
-        self.LOG(E_ALWAYS, 'PGSQL Backend (%s): closing connection' % self.type)
+        self.LOG(E_ALWAYS, self._prefix + '(%s): closing connection' % self.type)
