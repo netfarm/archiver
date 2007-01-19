@@ -52,7 +52,7 @@ INSERT INTO mail (
     '%(subject)s',
     '%(date)s',
     %(attachment)s,
-    NULL
+    -1
 );
 """
 
