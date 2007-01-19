@@ -46,6 +46,8 @@ cmd_umount='/usr/bin/sudo /bin/umount %(mountpoint)s'
 cmd_prepare='/usr/bin/sudo /usr/bin/install -d -m 755 -o %(user)s %(mountpoint)s/%(archiverdir)s'
 
 ##
+update_query = 'update mail set media = get_curr_media() where year = %(year)d and pid = %(pid)d;'
+
 class VFSError(Exception):
     pass
 
@@ -99,7 +101,7 @@ class Backend(BackendPGSQL):
         try:
             self.imagebase= config.get(self.type, 'imagebase')
             self.mountpoint = config.get(self.type, 'mountpoint')
-            self.infohashdb = config.get(self.type, 'infohashdb')
+            self.label = config.get(self.type, 'label')
             self.archiverdir = config.get(self.type, 'archiverdir')
             self.imagesize = config.getint(self.type, 'imagesize')
         except:
@@ -182,19 +184,8 @@ class Backend(BackendPGSQL):
         return False
 
     def getImagefile(self):
-        error = False
-        try:
-            hashdb = opendb(self.infohashdb, 'r')
-            s = hashdb.keys()
-            s.sort(lambda x, y: labelsort(x, y))
-            hashdb.close()
-        except:
-            error = True
-
-        if error or len(s) < 1:
-            raise VFSError, 'Error parsing label'
-
-        return '%s-%s.img' % (self.imagebase, '-'.join(s.pop().split('|')))
+        media_id = self.do_query('get_curr_media();')[0]
+        return '%s-%d.img' % (self.imagebase, media_id)
 
     def do_cmd(self, cmd, text):
         self.LOG(E_TRACE, self._prefix + 'Executing [%s]' % cmd)
@@ -213,14 +204,14 @@ class Backend(BackendPGSQL):
     def umount(self):
         return self.do_cmd(cmd_umount % { 'mountpoint' : self.mountpoint }, 'Cannot umount image')
 
-    def create(self, year, pid):
-        label = 'NMA-[%d-%d]' % (year, pid)
-        try:
-            hashdb = opendb(self.infohashdb, 'c')
-        except:
-            self.LOG(E_ERR, self._prefix + 'Cannot open the hashdb file')
+    def create(self):
+        media_id = self.do_query('get_next_media();')[0]
+        if media_id == 0:
+            self.LOG(E_ERR, self._prefix + 'Get next media id failed')
             return False
 
+        media_id = str(self.do_query('get_next_media();')[0])
+        label = '-'.join([self.label, str(media_id)])
         try:
             fd = open(self.image, 'wb')
             fd.seek((self.imagesize * 1024 * 1024) - 1)
@@ -231,9 +222,6 @@ class Backend(BackendPGSQL):
             return False
 
         if self.do_cmd(cmd_mke2fs % { 'label' : label, 'image' : self.image }, 'Cannot make image'):
-            key = '%d|%d' % (year, pid)
-            hashdb[key] = label
-            hashdb.close()
             return True
 
         return False
@@ -280,7 +268,7 @@ class Backend(BackendPGSQL):
         except:
             self.LOG(E_ALWAYS, self._prefix + 'Image not present, creting it')
 
-            if not self.create(data['year'], data['pid']):
+            if not self.create():
                 self.LOG(E_ERR, self._prefix + 'Cannot create Image file')
                 return 0, 443, 'Internal Error (Image creation failed)'
 
@@ -338,6 +326,13 @@ class Backend(BackendPGSQL):
                 return 0, 443, '%s: %s' % (t, val)
 
         self.LOG(E_TRACE, self._prefix + 'wrote %s' % filename)
+
+        if self.do_query(update_query % data)[0] == 0:
+            try: unlink(filename)
+            except: pass
+            self.LOG(E_ERR, self._prefix + 'Error updating mail entry, removing file from Image')
+            return 0, 443, 'Internal Error while updating mail entry'
+
         return BACKEND_OK
 
     def shutdown(self):

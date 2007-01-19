@@ -77,6 +77,18 @@ INSERT INTO authorized (
 );
 """
 
+storage_template = """
+INSERT INTO mail_storage (
+    year,
+    pid,
+    mail
+) VALUES (
+    '%(year)d',
+    '%(pid)d',
+    '%(mail)s'
+);
+"""
+
 ##
 def sql_quote(v):
     """sql_quote
@@ -294,20 +306,18 @@ class Backend(BackendBase):
         year, pid, result = self.do_query(qs, True, True)
         return year, pid, result
 
-    ### Disabled for now
-    def process_storage_disabled(self, data):
+    def process_storage(self, data):
         """process storaging of mail on pgsql
 
         The query doesn't return rows but only result code
         @param data: is a dict containg year, pid and mail from archiver
         @return: result code"""
-        #msg = { 'year': data['year'],
-        #        'pid' : data['pid'],
-        #        'message_id' : data['mid'][:508],
-        #        'mail': encodestring(data['mail'])
-        #        }
+        msg = { 'year': data['year'],
+                'pid' : data['pid'],
+                'mail': encodestring(data['mail'])
+                }
 
-        return 0, 443, 'Unimplemented'
+        return self.do_query(storage_template % msg)
 
     def shutdown(self):
         """shutdown the PGSQL stage
