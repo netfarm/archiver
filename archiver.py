@@ -536,9 +536,11 @@ def StageHandler(config, stage_type):
                     return self.do_exit(443, 'All recipients were rejected by the mailserver')
 
                 LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
-                if self.hashdb.has_key(mid):
+                try:
                     del self.hashdb[mid]
                     self.hashdb.sync()
+                except:
+                    pass
                 return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
 
         def do_exit(self, code, msg='', extcode=None):
