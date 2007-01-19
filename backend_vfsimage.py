@@ -51,25 +51,6 @@ update_query = 'update mail set media = get_curr_media() where year = %(year)d a
 class VFSError(Exception):
     pass
 
-def labelsort(a, b):
-    y1, p1 = a.split('|')
-    y2, p2 = b.split('|')
-
-    y1 = int(y1)
-    p1 = long(p1)
-    y2 = int(y2)
-    p2 = long(p2)
-
-    if y1 > y2: return 1
-    if y1 < y2: return -1
-
-    if p1 > p2: return 1
-    if p1 < p2: return -1
-
-    return 0
-
-##
-
 class Backend(BackendPGSQL):
     """VFS Image Backend Class
 
