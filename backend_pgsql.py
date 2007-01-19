@@ -287,7 +287,7 @@ class Backend(BackendBase):
 
         qs = qs + 'SELECT pid, year from mail_pid;'
 
-        year, pid, result  = self.do_query(qs, True, True)
+        year, pid, result = self.do_query(qs, True, True)
         return year, pid, result
 
     ### Disabled for now
