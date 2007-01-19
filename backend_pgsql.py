@@ -135,16 +135,18 @@ class Backend(BackendBase):
         """The constructor
 
         Initialize a connection to pgsql"""
-        if prefix is None:
-            self._prefix = 'PGSQL Backend: '
-        else:
-            self._prefix = prefix
+
         self.config = config
         self.type = stage_type
         self.LOG = ar_globals['LOG']
-        self.process = getattr(self, 'process_' + self.type, None)
-        if self.process is None:
-            raise StorageTypeNotSupported, self.type
+
+        if prefix is None:
+            self._prefix = 'PGSQL Backend: '
+            self.process = getattr(self, 'process_' + self.type, None)
+            if self.process is None:
+                raise StorageTypeNotSupported, self.type
+        else:
+            self._prefix = prefix
 
         try:
             dsn = self.config.get(self.type, 'dsn')
