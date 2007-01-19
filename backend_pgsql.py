@@ -139,7 +139,7 @@ class Backend(BackendBase):
             raise BadConnectionString, dsn
 
         username, password, host, dbname = dsn.split(':')
-        self.dsn = "host=%s user=%s password=%s dbname=%s" % (host,
+        self.dsn = 'host=%s user=%s password=%s dbname=%s' % (host,
                                                               username,
                                                               password,
                                                               dbname)
