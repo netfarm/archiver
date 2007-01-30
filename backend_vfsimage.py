@@ -164,9 +164,13 @@ class Backend(BackendPGSQL):
                 return True
         return False
 
-    def getImagefile(self):
-        media_id = self.do_query('get_curr_media();')[0]
-        return '%s-%d.img' % (self.imagebase, media_id)
+    def getImageFile(self):
+        res, data, msg = self.do_query('select get_curr_media();', True, True)
+        self.LOG(E_ERR, data)
+        if not res or len(data) != 1:
+            self.LOG(E_ERR, self._prefix + 'GetImageFile failed ' + msg)
+            return None
+        return '%s-%d.img' % (self.imagebase, data[0]) # Media Id
 
     def do_cmd(self, cmd, text):
         self.LOG(E_TRACE, self._prefix + 'Executing [%s]' % cmd)
@@ -186,12 +190,12 @@ class Backend(BackendPGSQL):
         return self.do_cmd(cmd_umount % { 'mountpoint' : self.mountpoint }, 'Cannot umount image')
 
     def create(self):
-        media_id = self.do_query('get_next_media();')[0]
-        if media_id == 0:
-            self.LOG(E_ERR, self._prefix + 'Get next media id failed')
+        res, data, msg = self.do_query('select get_next_media();', True, True)
+        if not res or (len(data) != 1) or data[0] == 0:
+            self.LOG(E_ERR, self._prefix + 'Query returned unexpected data [%s]' % msg)
             return False
 
-        media_id = str(self.do_query('get_next_media();')[0])
+        media_id = str(data[0])
         label = '-'.join([self.label, str(media_id)])
         try:
             fd = open(self.image, 'wb')
@@ -225,8 +229,13 @@ class Backend(BackendPGSQL):
             self.LOG(E_ERR, self._prefix + 'Recycle: reseal failed')
             return False
 
+        newname = self.getImageFile()
+        if newname is None:
+            self.LOG(E_ERR, self._prefix + 'Recycle: cannot get image name')
+            return False
+
         try:
-            rename(self.image, self.getImagefile())
+            rename(self.image, newname)
         except:
             self.LOG(E_ERR, self._prefix + 'Recycle: rename failed')
             return False
@@ -247,7 +256,7 @@ class Backend(BackendPGSQL):
         try:
             stat(self.image)
         except:
-            self.LOG(E_ALWAYS, self._prefix + 'Image not present, creting it')
+            self.LOG(E_ALWAYS, self._prefix + 'Image not present, creating it')
 
             if not self.create():
                 self.LOG(E_ERR, self._prefix + 'Cannot create Image file')
@@ -308,10 +317,11 @@ class Backend(BackendPGSQL):
 
         self.LOG(E_TRACE, self._prefix + 'wrote %s' % filename)
 
-        if self.do_query(update_query % data)[0] == 0:
+        res, data, msg = self.do_query(update_query % data, False, True)
+        if not res:
             try: unlink(filename)
             except: pass
-            self.LOG(E_ERR, self._prefix + 'Error updating mail entry, removing file from Image')
+            self.LOG(E_ERR, self._prefix + 'Error updating mail entry [%s], removing file from Image' % msg)
             return 0, 443, 'Internal Error while updating mail entry'
 
         return BACKEND_OK

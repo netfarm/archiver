@@ -210,16 +210,14 @@ class Backend(BackendBase):
         @param qs: the query string
         @param fetch: if True the query must return a result
         @param autorecon: if a query fails a db reconnection is done
-        @return: year, pid, message, if year is 0 an error is occured,
-                 pid has the code, message contains a more detailed explanation"""
+        @return: Boolean Status, data, and message"""
         try:
             self.cursor.execute(qs)
             self.connection.commit()
+            res = []
             if fetch:
                 res = self.cursor.fetchone()
-                return res[1], res[0], 'Ok'
-            else:
-                return BACKEND_OK
+            return True, res, 'Ok'
         except:
             try:
                 self.connection.rollback()
@@ -234,7 +232,7 @@ class Backend(BackendBase):
                 except:
                     error = 'Error reopening DB connectin'
                 if error is not None:
-                    return 0, 443, 'Internal Server Error - ' + error
+                    return False, [], 'Internal Server Error - ' + error
                 return self.do_query(qs, fetch)
             else:
                 t, val, tb = exc_info()
@@ -242,7 +240,7 @@ class Backend(BackendBase):
                 msg = format_msg(val)
                 self.LOG(E_ERR, self._prefix + 'Cannot execute query: ' + msg)
                 self.LOG(E_ERR, self._prefix + 'the query was: ' + qs)
-                return 0, 443, '%s: Internal Server Error' % t
+                return False, [], '%s: Internal Server Error' % t
 
     def parse_recipients(self, recipients):
         result = []
@@ -303,10 +301,13 @@ class Backend(BackendBase):
         for mailbox in mboxes:
             qs = qs + authorized_template % mailbox
 
-        qs = qs + 'SELECT pid, year from mail_pid;'
+        qs = qs + 'SELECT year, pid from mail_pid;'
 
-        year, pid, result = self.do_query(qs, True, True)
-        return year, pid, result
+        res, data, msg = self.do_query(qs, True, True)
+        if not res or len(data) != 2:
+            return 0, 443, msg
+
+        return data[0], data[1], msg # year, pid, message
 
     def process_storage(self, data):
         """process storaging of mail on pgsql
@@ -319,7 +320,10 @@ class Backend(BackendBase):
                 'mail': encodestring(data['mail'])
                 }
 
-        return self.do_query(storage_template % msg)
+        res, data, msg = self.do_query(storage_template % msg)
+        if not res:
+            return 0, 443, msg
+        return BACKEND_OK
 
     def shutdown(self):
         """shutdown the PGSQL stage
