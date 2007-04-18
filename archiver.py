@@ -764,7 +764,7 @@ def StageHandler(config, stage_type):
             bargs['m_attach'] = m_attach
             bargs['m_mid'] = mid
             if dbchecker is not None:
-                bargs['m_mboxes'] = dbchecker.mblookup(m_from + m_to + m_cc) ### FIXME check datatypes
+                bargs['m_mboxes'] = dbchecker.mblookup(m_from[1] + m_to + m_cc) ### FIXME check types
             else:
                 bargs['m_mboxes'] = []
 
