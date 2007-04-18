@@ -51,8 +51,6 @@ def lookup(email, db):
     return lookup_alias(value, db, bc)
 
 def getusers(emails, db):
-    if platform == 'win32': return [] # assume no mailbox on win32
-
     if (type(emails) != ListType) or (len(emails) < 1): return []
     results = []
     res = []

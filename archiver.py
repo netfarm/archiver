@@ -52,7 +52,7 @@ from smtplib import SMTP
 from ConfigParser import ConfigParser
 from mimify import mime_decode
 from base64 import decodestring
-from threading import Thread, RLock
+from threading import Thread, RLock, Event
 from cStringIO import StringIO
 from getopt import getopt
 from types import IntType, DictType, StringType
@@ -84,10 +84,10 @@ BACKEND_OK  = (1, 200, 'Ok')
 MINSIZE     = 8
 
 ### Globals
-global LOG, runas, quotatbl, pidfile, isRunning, main_svc, serverPoll
+global LOG, runas, dbchecker, pidfile, isRunning, main_svc, serverPoll
 
 LOG        = None
-quotatbl   = None
+dbchecker  = None
 pidfile    = None
 isRunning  = False
 main_svc   = False
@@ -303,35 +303,6 @@ def dupe_check(headers):
             return key
         check.append(key)
     return None
-
-## FIXME: Implement default quota
-def quota_check(sender, size):
-    ## Format of the quotafile hash
-    ## key: email -> login@domain
-    ## value: quota limit in kbytes
-    try:
-        qcheck = opendb(quotatbl, 'r')
-    except:
-        t, val, tb = exc_info()
-        del t, tb
-        LOG(E_ERR, 'Cannot open quota file %s - %s' % (quotatbl, val))
-        qcheck = None
-
-    if qcheck is None: return True # ignore
-
-    try:
-        csize = long(qcheck[sender])
-    except:
-        csize = 0
-
-    qcheck.close()
-
-    if csize > 0:
-        LOG(E_TRACE, 'Checking quota for %s - %d kb' % (sender, csize))
-        if size > csize:
-            LOG(E_ERR, 'Sender quota execeded by %s' % sender)
-            return False
-    return True
 
 def StageHandler(config, stage_type):
     """Meta class for a StageHandler Backend"""
@@ -655,6 +626,7 @@ def StageHandler(config, stage_type):
 
         def process_archive(self, peer, sender, recips, data):
             """Archives email meta data using a Backend"""
+            global dbchecker
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
             size = len(data)
@@ -739,13 +711,9 @@ def StageHandler(config, stage_type):
                     LOG(E_INFO, '%s: Mail to: %s in whitelist, not archived' % (self.type, base))
                     return self.sendmail(sender, recips, self.remove_aid(data, msg))
 
-            ## Sender size limit check
-            ## FIXME: values are cached - so I need to reopen the file
-            if quotatbl is not None:
-                ## from bytes to kb
-                size = size >> 10
-                if not quota_check(m_from[1], size): # .lower() ??
-                    return self.do_exit(422, 'Sender quota execeded')
+            ## Sender size limit check - in kb
+            if dbchecker is not None and dbchecker.quota_check(m_from[1], size >> 10):
+                return self.do_exit(422, 'Sender quota execeded')
 
             ## Extraction of Cc field
             try:
@@ -795,6 +763,10 @@ def StageHandler(config, stage_type):
             bargs['m_date'] = m_date
             bargs['m_attach'] = m_attach
             bargs['m_mid'] = mid
+            if dbchecker is not None:
+                bargs['m_mboxes'] = dbchecker.mblookup(m_from + m_to + m_cc) ### FIXME check datatypes
+            else:
+                bargs['m_mboxes'] = []
 
             year, pid, error = self.backend.process(bargs)
             if year == 0:
@@ -814,6 +786,42 @@ def StageHandler(config, stage_type):
             return self.sendmail(sender, recips, data, aid, mid)
 ##### Class Wrapper - End
     return apply(StageHandler, (input_classes[input_class], config, stage_type))
+
+#### Mailbox DB and Quota DB reader/checker
+class DBChecker(Thread):
+    def __init__(self, dbfiles, timeout):
+        self.dbfiles = dbfiles
+        self.ev = Event()
+        self.running = True
+        self.timeout = timeout
+        self.update()
+        Thread.__init__(self)
+
+    def run(self):
+        while self.running:
+            LOG(E_ALWAYS, 'DBCheck CheckPoint')
+            self.update()
+            self.ev.wait(self.timeout)
+        LOG(E_ALWAYS, 'DBCheck Done')
+
+    def stop(self):
+        self.running = False
+        self.ev.set()
+
+    def update(self):
+        ## Check timestamp and update data structs
+        ## Lock
+        pass
+
+    def quota_check(self, sender, size):
+        ## Quota Check
+        ## Lock
+        if not self.dbfiles.has_key('quota'): return False
+
+    def mblookup(self, emails):
+        ## Mailbox Lookup using mblookup module
+        ## Lock
+        pass
 
 def multiplex(objs, function, *args):
     """Generic method multiplexer
@@ -937,7 +945,7 @@ def win32_startup():
 ## Start the Archiver Service
 def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     """ Archiver Service Main """
-    global main_svc, LOG, runas, quotatbl, whitelist, isRunning
+    global LOG, main_svc, dbchecker, runas, whitelist, isRunning
     main_svc = service_main
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
@@ -953,12 +961,27 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     else:
         runas, mypid = unix_startup(config, user, debug)
 
-    ## Quota table
-    try:
-        quotatbl = config.get('global', 'quotafile')
-        LOG(E_ALWAYS, '[Main] Quotacheck is enabled')
-    except:
-        quotatbl = None
+    ### Quota and Mailbox lookup stuff
+    if platform != 'win32':
+        try:
+            sleeptime = float(config.get('global', 'sleeptime'))
+        except:
+            sleeptime = 60.0
+
+        dbfiles = {}
+        try:
+            dbfiles['quota'] = { 'file': config.get('global', 'quotafile'), 'timestamp': 0 }
+            LOG(E_ALWAYS, '[Main] QuotaCheck Enabled')
+        except:
+            pass
+
+        try:
+            virtualdb, aliasdb = config.get('global', 'mbfiles').split(',')
+            dbfiles['virtual'] = { 'file': virtualdb.strip(), 'timestamp': 0 }
+            dbfiles['aliases'] = { 'file': aliasdb.strip(), 'timestamp': 0 }
+            LOG(E_ALWAYS, '[Main] Mailbox Lookup is enabled')
+        except:
+            pass
 
     ## Whitelist
     try:
@@ -980,6 +1003,10 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     if len(serverPoll) == 0:
         LOG(E_ALWAYS, '[Main] No stages configured, Aborting...')
         return do_shutdown(-7)
+
+    if platform != 'win32' and len(dbfiles):
+        dbchecker = DBChecker(dbfiles, sleeptime)
+        serverPoll.append(dbchecker)
 
     multiplex(serverPoll, 'start')
     isRunning = True

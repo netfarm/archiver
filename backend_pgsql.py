@@ -28,7 +28,6 @@ from sys import exc_info
 from time import asctime
 from base64 import encodestring
 from psycopg2 import connect as db_connect
-from mblookup import mblookup
 
 mail_template = """
 INSERT INTO mail (
@@ -287,18 +286,13 @@ class Backend(BackendBase):
 
         addrs = data['m_to'] + data['m_cc']
         recipients = self.parse_recipients(addrs)
-        mbcheck = []
-        mbcheck.append(data['m_from'][1])
-        for addr in addrs:
-            mbcheck.append(addr[1])
-        mboxes = mblookup(mbcheck)
 
         qs = mail_template % values
 
         for recipient in recipients:
             qs = qs + recipient_template % recipient
 
-        for mailbox in mboxes:
+        for mailbox in data['m_mboxes']:
             qs = qs + authorized_template % mailbox
 
         qs = qs + 'SELECT year, pid from mail_pid;'
