@@ -50,10 +50,13 @@ def lookup(email, db):
     bc = []
     return lookup_alias(value, db, bc)
 
-def getusers(emails, db):
+def getusers(emails, dbfiles):
     if (type(emails) != ListType) or (len(emails) < 1): return []
     results = []
     res = []
+
+    db = { 'virtual': dbfiles['virtual']['db'],
+           'aliases': dbfiles['aliases']['db'] }
 
     for email in emails:
         res = res + lookup(email, db)

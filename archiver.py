@@ -36,7 +36,8 @@ __all__ = [ 'BackendBase',
 from sys import platform, hexversion
 if platform != 'win32':
     from signal import signal, SIGTERM, SIGINT, SIGHUP, SIG_IGN
-    from os import fork, kill, seteuid, setegid, getuid, chdir
+    from stat import ST_MTIME
+    from os import stat, fork, kill, seteuid, setegid, getuid, chdir
     from pwd import getpwnam, getpwuid
 from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
 from time import strftime, time, localtime, sleep, mktime
@@ -52,7 +53,7 @@ from smtplib import SMTP
 from ConfigParser import ConfigParser
 from mimify import mime_decode
 from base64 import decodestring
-from threading import Thread, RLock, Event
+from threading import Thread, Lock, RLock, Event
 from cStringIO import StringIO
 from getopt import getopt
 from types import IntType, DictType, StringType
@@ -790,17 +791,20 @@ def StageHandler(config, stage_type):
 #### Mailbox DB and Quota DB reader/checker
 class DBChecker(Thread):
     def __init__(self, dbfiles, timeout):
+        from mblookup import getusers
+        self.getusers = getusers
         self.dbfiles = dbfiles
         self.ev = Event()
         self.running = True
         self.timeout = timeout
-        self.update()
+        self.lock = Lock()
+        self.updatedblist()
         Thread.__init__(self)
 
     def run(self):
         while self.running:
             LOG(E_ALWAYS, 'DBCheck CheckPoint')
-            self.update()
+            self.updatedblist()
             self.ev.wait(self.timeout)
         LOG(E_ALWAYS, 'DBCheck Done')
 
@@ -808,20 +812,70 @@ class DBChecker(Thread):
         self.running = False
         self.ev.set()
 
-    def update(self):
-        ## Check timestamp and update data structs
-        ## Lock
-        pass
+    def updatedb(self, db, check):
+        update = False
+        try:
+            info = stat(db['filename'])
+            if check and (info[ST_MTIME] != db['timestamp']):
+                update = True
+        except:
+            update = True
 
-    def quota_check(self, sender, size):
+        if update:
+            try:
+                dbdict = {}
+                dbf = opendb(db['filename'], 'r')
+                dbdict.update(dbf)
+                dbf.close()
+                db['timestamp'] = info[ST_MTIME]
+                db['db'] = dbdict
+                LOG(E_INFO, '[DBChecker] Updated db %s' % db['filename'])
+            except:
+                LOG(E_ERR, '[DBChecker] Error updating db %s' % db['filename'])
+
+    def updatedblist(self):
+        ## Check timestamp and update data structs
+        self.lock.acquire()
+        for db in self.dbfiles.values():
+            if (db['timestamp'] == 0) or (db['db'] is None):
+                self.updatedb(db, False)
+            else:
+                self.updatedb(db, True)
+        self.lock.release()
+
+    def quota_check(self, email, size):
         ## Quota Check
-        ## Lock
         if not self.dbfiles.has_key('quota'): return False
+        if self.dbfiles['quota']['db'] is None: return False
+        sender = self.mblookup([email])
+        if len(sender) != 1: return False
+        sender = sender[0]
+        res = False
+        self.lock.acquire()
+        if self.dbfiles['quota']['db'].has_key(sender):
+            try:
+                csize = long(self.dbfiles['quota']['db'][sender])
+            except:
+                csize = 0;
+            if (csize > 0) and (size > csize):
+                LOG(E_ERR, '[DBChecker] Quota for %s exceded' % email)
+                res = True
+        self.lock.release()
+        return res
 
     def mblookup(self, emails):
-        ## Mailbox Lookup using mblookup module
-        ## Lock
-        pass
+        ## Mailbox lookup
+        if not (self.dbfiles.has_key('virtual') and \
+                self.dbfiles.has_key('aliases')):
+            return []
+        if (self.dbfiles['virtual']['db'] is None) or \
+           (self.dbfiles['aliases']['db'] is None):
+            return []
+
+        self.lock.acquire()
+        res = self.getusers(emails, self.dbfiles)
+        self.lock.release()
+        return res
 
 def multiplex(objs, function, *args):
     """Generic method multiplexer
@@ -970,15 +1024,15 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
 
         dbfiles = {}
         try:
-            dbfiles['quota'] = { 'file': config.get('global', 'quotafile'), 'timestamp': 0 }
+            dbfiles['quota'] = { 'file': config.get('global', 'quotafile'), 'timestamp': 0, 'db': None }
             LOG(E_ALWAYS, '[Main] QuotaCheck Enabled')
         except:
             pass
 
         try:
             virtualdb, aliasdb = config.get('global', 'mbfiles').split(',')
-            dbfiles['virtual'] = { 'file': virtualdb.strip(), 'timestamp': 0 }
-            dbfiles['aliases'] = { 'file': aliasdb.strip(), 'timestamp': 0 }
+            dbfiles['virtual'] = { 'file': virtualdb.strip(), 'timestamp': 0, 'db': None }
+            dbfiles['aliases'] = { 'file': aliasdb.strip(), 'timestamp': 0, 'db': None }
             LOG(E_ALWAYS, '[Main] Mailbox Lookup is enabled')
         except:
             pass
