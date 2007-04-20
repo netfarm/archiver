@@ -817,11 +817,11 @@ class DBChecker(Thread):
         self.running = False
         self.ev.set()
 
-    def updatedb(self, db, check):
-        update = not check
+    def updatedb(self, db):
+        update = False
         try:
             info = stat(db['filename'])
-            if check and (info[ST_MTIME] != db['timestamp']):
+            if info[ST_MTIME] != db['timestamp']:
                 update = True
         except:
             update = True
@@ -834,18 +834,15 @@ class DBChecker(Thread):
                 dbf.close()
                 db['timestamp'] = info[ST_MTIME]
                 db['db'] = dbdict
-                LOG(E_INFO, '[DBChecker] Updated db %s' % db['filename'])
+                LOG(E_INFO, '[DBChecker] (Re)Loaded db %s' % db['filename'])
             except:
-                LOG(E_ERR, '[DBChecker] Error updating db %s' % db['filename'])
+                LOG(E_ERR, '[DBChecker] Error (Re)Loading db %s' % db['filename'])
 
     def updatedblist(self):
         ## Check timestamp and update data structs
         self.lock.acquire()
         for db in self.dbfiles.values():
-            if (db['timestamp'] == 0) or (db['db'] is None):
-                self.updatedb(db, False)
-            else:
-                self.updatedb(db, True)
+            self.updatedb(db)
         self.lock.release()
 
     def quota_check(self, email, size):
