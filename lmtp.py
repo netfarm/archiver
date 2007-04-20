@@ -538,6 +538,12 @@ class SMTPChannel(smtpd_SMTPChannel):
         self.set_terminator('\r\n')
         self.__getaddr = getaddr
 
+    ### FIXME: why asyncore calls handle_expt?
+    ### it seams poll's map gets an object after polling
+    ### and it shouldn't
+    def handle_expt(self):
+        pass
+
     def smtp_MAIL(self, arg):
         """SMTP 'mail' command"""
         address, options = self.__getaddr('FROM:', arg)
