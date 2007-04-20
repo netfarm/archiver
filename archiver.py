@@ -764,8 +764,13 @@ def StageHandler(config, stage_type):
             bargs['m_date'] = m_date
             bargs['m_attach'] = m_attach
             bargs['m_mid'] = mid
+
             if dbchecker is not None:
-                bargs['m_mboxes'] = dbchecker.mblookup(m_from[1] + m_to + m_cc) ### FIXME check types
+                ## Compose address list for mb lookup
+                addrs = []
+                for addr in [m_from] + m_to + m_cc:
+                    addrs.append(addr[1])
+                bargs['m_mboxes'] = dbchecker.mblookup(addrs)
             else:
                 bargs['m_mboxes'] = []
 
@@ -803,17 +808,17 @@ class DBChecker(Thread):
 
     def run(self):
         while self.running:
-            LOG(E_ALWAYS, 'DBCheck CheckPoint')
+            LOG(E_TRACE, '[DBChecker] CheckPoint')
             self.updatedblist()
             self.ev.wait(self.timeout)
-        LOG(E_ALWAYS, 'DBCheck Done')
+        LOG(E_ALWAYS, '[DBChecker] Done')
 
     def stop(self):
         self.running = False
         self.ev.set()
 
     def updatedb(self, db, check):
-        update = False
+        update = not check
         try:
             info = stat(db['filename'])
             if check and (info[ST_MTIME] != db['timestamp']):
@@ -1031,8 +1036,8 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
 
         try:
             virtualdb, aliasdb = config.get('global', 'mbfiles').split(',')
-            dbfiles['virtual'] = { 'file': virtualdb.strip(), 'timestamp': 0, 'db': None }
-            dbfiles['aliases'] = { 'file': aliasdb.strip(), 'timestamp': 0, 'db': None }
+            dbfiles['virtual'] = { 'filename': virtualdb.strip(), 'timestamp': 0, 'db': None }
+            dbfiles['aliases'] = { 'filename': aliasdb.strip(), 'timestamp': 0, 'db': None }
             LOG(E_ALWAYS, '[Main] Mailbox Lookup is enabled')
         except:
             pass
