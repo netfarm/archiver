@@ -57,6 +57,7 @@ TODO 2.x:
 - [done] use chdir('/') on daemonize
 - [done] added message-id as additional processed data
 - [done] removed doxygen stuff
+- [done] Update rdbms driver to psycopg2
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package
@@ -68,7 +69,6 @@ TODO 2.x:
 - Check -> sendmail: Some of recipients rejected / mail is expunged from hashdb, correct?
 - Update structure.txt: stage to stage passthrough - maybe usefull on win32
 - Convert some fields in lowercase before archiving?
-- Update rdbms driver to psycopg2
 - Fix: Error parsing to/cc: Undisclosed-Recipient
 - Option to Skip spam tagged mail
 - Check init script if the archiver is already launched, pidfile is overwritten/removed ??
@@ -79,3 +79,4 @@ TODO 2.x:
 - complete backend_pgsql and use new sql for mail
 - remove sql storage backend?
 - uniform backend error messages
+- why poll() keeps objects in list then calls handle_excpt???
