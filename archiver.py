@@ -85,8 +85,6 @@ BACKEND_OK  = (1, 200, 'Ok')
 MINSIZE     = 8
 
 ### Globals
-global LOG, runas, dbchecker, pidfile, isRunning, main_svc, serverPoll
-
 LOG        = None
 dbchecker  = None
 pidfile    = None
@@ -627,7 +625,6 @@ def StageHandler(config, stage_type):
 
         def process_archive(self, peer, sender, recips, data):
             """Archives email meta data using a Backend"""
-            global dbchecker
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
             size = len(data)
