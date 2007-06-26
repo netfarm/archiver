@@ -80,3 +80,4 @@ TODO 2.x:
 - remove sql storage backend?
 - uniform backend error messages
 - why poll() keeps objects in list then calls handle_excpt???
+- remove duplicate code in backend_filesystem and backed_vfsimage
