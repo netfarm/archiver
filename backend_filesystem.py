@@ -102,7 +102,7 @@ class Backend(BackendBase):
             return 0, 443, error
 
         if self.compression is not None:
-            name = '%d-%d' % (data['year'], data['pid'])
+            name = '%d-%d.eml' % (data['year'], data['pid'])
             comp = CompressedFile(compressor=self.compression[0], ratio=self.compression[1], name=name)
             comp.write(data['mail'])
             data['mail'] = comp.getdata()
