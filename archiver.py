@@ -806,7 +806,7 @@ class DBChecker(Thread):
 
     def run(self):
         while self.running:
-            LOG(E_TRACE, '[DBChecker] CheckPoint')
+            #LOG(E_TRACE, '[DBChecker] CheckPoint')
             self.updatedblist()
             self.ev.wait(self.timeout)
         LOG(E_ALWAYS, '[DBChecker] Done')
