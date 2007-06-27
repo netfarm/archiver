@@ -6,7 +6,7 @@ create table mail_log (
     dsn varchar(16) not null,
     relay_host varchar(256) not null,
     relay_port integer not null default 0,
-    delay integer not null default 0,
+    delay numeric not null default 0,
     status varchar(64) not null default 'N.D.',
     status_desc text not null default '',
     mailto varchar(256) not null default 'N.D.',
