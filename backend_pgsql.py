@@ -39,8 +39,8 @@ INSERT INTO mail (
     from_domain,
     subject,
     mail_date,
-    attachment,
     mail_size,
+    attachment,
     media
 ) VALUES (
     get_next_mail_id(),
