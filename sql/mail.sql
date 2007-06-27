@@ -55,7 +55,7 @@ CREATE FUNCTION get_curr_year() RETURNS integer AS $$
 SELECT int4(Extract(year from now())) as result from mail_pid limit 1;
 $$ LANGUAGE sql;
 
-INSERT INTO mail_pid (year, pid ) VALUES ( 0 , 0 );
+INSERT INTO mail_pid (year, pid) VALUES (0 , 0);
 
 CREATE FUNCTION get_curr_pid() RETURNS integer AS $$
 SELECT pid as result from mail_pid limit 1;
