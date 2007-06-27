@@ -761,6 +761,7 @@ def StageHandler(config, stage_type):
             bargs['m_date'] = m_date
             bargs['m_attach'] = m_attach
             bargs['m_mid'] = mid
+            bargs['m_size'] = size
 
             if dbchecker is not None:
                 ## Compose address list for mb lookup

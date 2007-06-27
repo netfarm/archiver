@@ -40,6 +40,7 @@ INSERT INTO mail (
     subject,
     mail_date,
     attachment,
+    mail_size,
     media
 ) VALUES (
     get_next_mail_id(),
@@ -49,7 +50,8 @@ INSERT INTO mail (
     '%(from_login)s',
     '%(from_domain)s',
     '%(subject)s',
-    '%(date)s',
+    '%(mail_date)s',
+    %(mail_size)s,
     %(attachment)s,
     -1
 );
@@ -267,8 +269,9 @@ class Backend(BackendBase):
 
         # Conversions
         nattach = len(data['m_attach'])
-        subject = sql_quote(mime_decode_header(data['m_sub'])[:252])
-        date = sql_quote(asctime(data['m_date']))
+        mail_size = data['m_size']
+        subject = sql_quote(mime_decode_header(data['m_sub'])[:256])
+        mail_date = sql_quote(asctime(data['m_date']))
 
         try:
             slog, sdom = data['m_from'][1].split('@')
@@ -277,11 +280,12 @@ class Backend(BackendBase):
         except:
             return 0, 443, 'Error splitting From address'
 
-        values = { 'message_id': sql_quote(data['m_mid'][:508]),
-                   'from_login': sql_quote(slog[:28]),
-                   'from_domain': sql_quote(sdom[:255]),
-                   'subject': sql_quote(subject[:252]),
-                   'date': date,
+        values = { 'message_id': sql_quote(data['m_mid'][:512]),
+                   'from_login': sql_quote(slog[:32]),
+                   'from_domain': sql_quote(sdom[:256]),
+                   'subject': sql_quote(subject[:256]),
+                   'mail_date': mail_date,
+                   'mail_size': mail_size,
                    'attachment': nattach }
 
         addrs = data['m_to'] + data['m_cc']

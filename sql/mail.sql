@@ -8,11 +8,12 @@ CREATE TABLE mail (
     mail_id integer NOT NULL,
     year smallint NOT NULL,
     pid integer NOT NULL,
-    message_id character varying(508) NOT NULL,
-    from_login character varying(28) NOT NULL,
-    from_domain character varying(255) NOT NULL,
-    subject character varying(255) NOT NULL,
+    message_id character varying(512) NOT NULL,
+    from_login character varying(32) NOT NULL,
+    from_domain character varying(256) NOT NULL,
+    subject character varying(256) NOT NULL,
     mail_date date NOT NULL,
+    mail_size integer NOT NULL DEFAULT 0,
     attachment smallint DEFAULT 0 NOT NULL,
     media bigint DEFAULT -1
 );
@@ -30,8 +31,8 @@ CREATE SEQUENCE mail_id_sequence
 -- RECIPIENT
 CREATE TABLE recipient (
     mail_id integer NOT NULL,
-    to_login character varying(28) NOT NULL,
-    to_domain character varying(255) NOT NULL
+    to_login character varying(32) NOT NULL,
+    to_domain character varying(256) NOT NULL
 );
 
 ALTER TABLE ONLY recipient
@@ -41,7 +42,7 @@ ALTER TABLE ONLY recipient
 -- AUTHORIZED
 CREATE TABLE authorized (
     mail_id integer NOT NULL,
-    mailbox character varying(28) NOT NULL
+    mailbox character varying(32) NOT NULL
 );
 
 ALTER TABLE ONLY authorized
