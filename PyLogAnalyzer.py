@@ -23,8 +23,6 @@ from anydbm import open as dbopen
 from rfc822 import parseaddr
 from mx.DateTime.Parser import DateTimeFromString
 from psycopg2 import connect
-from sys import exit as sys_exit
-from signal import signal, SIGTERM
 import re
 
 DBDSN = 'host=localhost dbname=mail user=archiver password=mail'
@@ -85,6 +83,12 @@ def log(severity, text):
 class PyLogAnalyzer:
     def __init__(self, filename, dbfile='cache.db', rule='postfix', skiplist=defskiplist):
         try:
+            self.dbConn = connect(DBDSN)
+            self.dbCurr = self.dbConn.cursor()
+        except:
+            raise Exception, 'Cannot connect to DB'
+
+        try:
             self.fd = open(filename, 'r')
         except:
             raise Exception, 'Cannot open log file'
@@ -102,7 +106,13 @@ class PyLogAnalyzer:
         self.log = log
 
     def __del__(self):
-        ## FIXME log in dtor it's not defined
+        ## FIXME log in dtor is None
+        try:
+            self.dbCurr.close()
+            self.dbConn.close()
+        except:
+            self.log(E_ALWAYS, 'Error closing connection to DB')
+
         try:
             self.fd.close()
         except:
@@ -116,9 +126,17 @@ class PyLogAnalyzer:
         self.log(E_ALWAYS, 'Job Done')
 
     def insert(self, info):
-        #qs = query % info
         out = '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info
         log(E_ALWAYS, out)
+
+        qs = dbquery % info
+        try:
+            self.dbCurr.execute(qs)
+            self.dbConn.commit()
+        except:
+            log(E_ERR, 'DB Query Error')
+            self.dbConn.rollback()
+
         return True
 
     def mainLoop(self):
@@ -302,6 +320,8 @@ def sigtermHandler(signum, frame):
 
 if __name__ == '__main__':
     from sys import argv, exit as sys_exit
+    from signal import signal, SIGTERM
+
     if len(argv) != 2:
         print 'Usage %s logfile|fifo' % argv[0]
         sys_exit()
