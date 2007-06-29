@@ -24,6 +24,7 @@ from rfc822 import parseaddr
 from mx.DateTime.Parser import DateTimeFromString
 from psycopg2 import connect
 from sys import exit as sys_exit
+from signal import signal, SIGTERM
 import re
 
 DBDSN = 'host=localhost dbname=mail user=archiver password=mail'
@@ -75,6 +76,8 @@ insert into mail_log (
 
 supported = [ 'postfix' ]
 
+PyLog = None
+
 def log(severity, text):
     if severity <= loglevel:
         print text
@@ -87,6 +90,21 @@ class PyLogAnalyzer:
             raise Exception, 'Rule not supported'
         self.rule = rule
         self.skiplist = skiplist
+        self.log = log
+
+    def __del__(self):
+        ## FIXME log in dtor it's not defined
+        try:
+            self.fd.close()
+        except:
+            self.log(E_ALWAYS, 'Error closing logfile fd')
+
+        try:
+            self.db.close()
+        except:
+            self.log(E_ALWAYS, 'Error closing cache db')
+
+        self.log(E_ALWAYS, 'exiting by user request')
 
     def insert(self, info):
         #qs = query % info
@@ -97,7 +115,13 @@ class PyLogAnalyzer:
     def mainLoop(self):
         while 1:
             ## Read a line
-            line = self.fd.readline().strip()
+            try:
+                line = self.fd.readline().strip()
+            except KeyboardInterrupt:
+                break
+            except IOError:
+                break
+
             ## No data, exit
             if not len(line):
                 log(E_ALWAYS, 'No more data, exiting')
@@ -264,5 +288,10 @@ class PyLogAnalyzer:
 
     postfix_lmtp = postfix_smtp
 
+def sigtermHandler(signum, frame):
+    log(E_ALWAYS, 'SiGINT received')
+
 if __name__ == '__main__':
-    PyLogAnalyzer('/var/log/mail.log').mainLoop()
+    signal(SIGTERM, sigtermHandler)
+    PyLog = PyLogAnalyzer('/var/log/mail.log')
+    PyLog.mainLoop()
