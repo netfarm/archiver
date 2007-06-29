@@ -316,7 +316,7 @@ class PyLogAnalyzer:
     postfix_lmtp = postfix_smtp
 
 def sigtermHandler(signum, frame):
-    log(E_ALWAYS, 'SiGINT received')
+    log(E_ALWAYS, 'SiGTERM received')
 
 if __name__ == '__main__':
     from sys import argv, exit as sys_exit
