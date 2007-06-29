@@ -182,10 +182,10 @@ class PyLogAnalyzer:
                 continue
 
             ## Pick the needed parse method
-            cbname = '_'.join([self.rule, subprocess])
-            cb = getattr(self, cbname, None)
-            if cb is None:
-                #log(E_TRACE, 'Process function not found, ' + cbname)
+            hname = '_'.join([self.rule, subprocess])
+            handler = getattr(self, hname, None)
+            if handler is None:
+                #log(E_TRACE, 'Process function not found, ' + hname)
                 continue
 
             ## Map fields
@@ -198,7 +198,7 @@ class PyLogAnalyzer:
                         subprocess=subprocess)
 
             ## TODO try/except
-            res = cb(info.copy())
+            res = handler(info.copy())
 
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
