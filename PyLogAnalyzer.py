@@ -84,8 +84,17 @@ def log(severity, text):
 
 class PyLogAnalyzer:
     def __init__(self, filename, dbfile='cache.db', rule='postfix', skiplist=defskiplist):
-        self.fd = open(filename, 'r')
-        self.db = dbopen(dbfile, 'c')
+        try:
+            self.fd = open(filename, 'r')
+        except:
+            raise Exception, 'Cannot open log file'
+
+        try:
+            self.db = dbopen(dbfile, 'c')
+        except:
+            self.fd.close()
+            raise Exception, 'Cannot open cache db'
+
         if rule not in supported:
             raise Exception, 'Rule not supported'
         self.rule = rule
@@ -104,7 +113,7 @@ class PyLogAnalyzer:
         except:
             self.log(E_ALWAYS, 'Error closing cache db')
 
-        self.log(E_ALWAYS, 'exiting by user request')
+        self.log(E_ALWAYS, 'Job Done')
 
     def insert(self, info):
         #qs = query % info
@@ -292,6 +301,11 @@ def sigtermHandler(signum, frame):
     log(E_ALWAYS, 'SiGINT received')
 
 if __name__ == '__main__':
+    from sys import argv, exit as sys_exit
+    if len(argv) != 2:
+        print 'Usage %s logfile|fifo' % argv[0]
+        sys_exit()
+
     signal(SIGTERM, sigtermHandler)
-    PyLog = PyLogAnalyzer('/var/log/mail.log')
+    PyLog = PyLogAnalyzer(argv[1])
     PyLog.mainLoop()
