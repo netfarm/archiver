@@ -144,9 +144,7 @@ class PyLogAnalyzer:
             ## Read a line
             try:
                 line = self.fd.readline().strip()
-            except KeyboardInterrupt:
-                break
-            except IOError:
+            except (KeyboardInterrupt, IOError):
                 break
 
             ## No data, exit
