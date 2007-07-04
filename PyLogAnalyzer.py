@@ -27,7 +27,7 @@ import re
 
 DBDSN = 'host=localhost dbname=mail user=archiver password=mail'
 
-re_line   = re.compile(r'(\w\w\w \d\d \d\d:\d\d:\d\d) (.*?) (.*?)\[(\d*?)\]: (.*)')
+re_line   = re.compile(r'(\w+\s+\d+\s+\d+:\d+:\d+) (.*?) (.*?)\[(\d*?)\]: (.*)')
 re_status = re.compile(r'to=(.*?), relay=(.*?), delay=(.*?), delays=(.*?), dsn=(.*?), status=(.*?) \((.*)\)')
 re_qmgr   = re.compile(r'from=(.*?), size=(\d*?), nrcpt=(\d*?)\s')
 
@@ -41,7 +41,7 @@ E_WARN   = 2
 E_ERR    = 3
 E_TRACE  = 4
 
-loglevel = E_ALWAYS
+loglevel = E_ERR
 
 dbquery = """
 insert into mail_log (
@@ -126,8 +126,7 @@ class PyLogAnalyzer:
         self.log(E_ALWAYS, 'Job Done')
 
     def insert(self, info):
-        out = '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info
-        log(E_ALWAYS, out)
+        log(E_TRACE, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
 
         qs = dbquery % info
         try:
@@ -156,7 +155,6 @@ class PyLogAnalyzer:
             res = re_line.match(line)
             ## No match, continue
             if res is None:
-                log(E_ERR, 'No match, skipping line')
                 log(E_TRACE, 'No match on ' + line)
                 continue
 
@@ -207,10 +205,16 @@ class PyLogAnalyzer:
     ## If qmgr removes from queue then, remove
     def postfix_qmgr(self, info):
         if info['msg'].lower() == 'removed':
-            ref = info['ref']
-            log(E_TRACE, 'qmgr removed ' + ref)
-            del self.db[ref]
-            self.db.sync()
+            ref = info.get('ref', None)
+            if ref is None:
+                log(E_ERR, 'qmgr no ref')
+            else:
+                if self.db.has_key(ref):
+                    del self.db[ref]
+                    self.db.sync()
+                    log(E_TRACE, 'qmgr removed ' + ref)
+                else:
+                    log(E_ERR, 'Missing key in cache ' + ref)
 #        else:
 #            # from=<root@eve.netfarm.it>, size=484, nrcpt=3 (queue active)
 #            res = re_qmgr.match(info['msg'])
@@ -225,8 +229,12 @@ class PyLogAnalyzer:
     def postfix_smtp(self, info):
         ## Check ref for validity
         ref = info['ref']
+
+        ## Skip 'connect to' - FIXME find a better way
+        if len(ref) != 11: return False
+
         if not self.db.has_key(ref):
-            log(E_ERR, 'No ref match in the cache, ' + ref)
+            log(E_TRACE, 'No ref match in the cache, ' + ref)
             return False
 
         if self.db[ref].find('|') == -1:
@@ -279,24 +287,29 @@ class PyLogAnalyzer:
             log(E_ERR, 'Error parsing received date string, ' + rdatestr)
             return False
 
-        res = re_relay[info['subprocess']].match(relay)
-        if res is None:
-            log(E_ERR, 'Cannot parse relay address, ' + relay)
-            return False
+        ## Maybe deferred, relay is none
+        if relay == 'none':
+            relay_host = 'none'
+            relay_port = 0
+        else:
+            res = re_relay[info['subprocess']].match(relay)
+            if res is None:
+                log(E_ERR, 'Cannot parse relay address, ' + relay)
+                return False
 
-        ## Parse relay string
-        relay = res.groups()
+            ## Parse relay string
+            relay = res.groups()
 
-        ## Stop if we don't need the log
-        if relay[0] in self.skiplist:
-            return True
+            ## Stop if we don't need the log
+            if relay[0] in self.skiplist:
+                return True
 
-        ### FIXME lmtp
-        relay_host = relay[0].strip()
-        try:
-            relay_port = int(relay[2].strip())
-        except:
-            relay_port = 25
+            ### FIXME lmtp
+            relay_host = relay[0].strip()
+            try:
+                relay_port = int(relay[2].strip())
+            except:
+                relay_port = 25
 
         d = dict(message_id=mid, r_date=r_date.Format(), d_date=d_date.Format(),
                  dsn=dsn,
@@ -311,7 +324,9 @@ class PyLogAnalyzer:
         info.update(d)
         return self.insert(info)
 
-    postfix_lmtp = postfix_smtp
+    #postfix_lmtp = postfix_smtp
+    def postfix_lmtp(self, info):
+        return True
 
 def sigtermHandler(signum, frame):
     log(E_ALWAYS, 'SiGTERM received')
