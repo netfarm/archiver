@@ -33,6 +33,9 @@ re_qmgr   = re.compile(r'from=(.*?), size=(\d*?), nrcpt=(\d*?)\s')
 
 re_relay  = { 'smtp': re.compile(r'(.*?)\[(.*?)\]:(\d+)'), 'lmtp': re.compile(r'(.*?)()\[(.*?)\]') }
 
+re_sendmid = re.compile(r'from=(.*?), size=(\d*?), class=\d+, nrcpts=(\d*?), msgid=(.*?), proto=.*?, daemon=.*?, relay=(.*)')
+re_sendstat = re.compile(r'to=(.*?), delay=(.*?),.*, relay=(.*?), dsn=(.*?), stat=(.*?)\s(.*)')
+
 defskiplist   = [ '127.0.0.1', 'localhost' ]
 
 E_ALWAYS = 0
@@ -41,7 +44,7 @@ E_WARN   = 2
 E_ERR    = 3
 E_TRACE  = 4
 
-loglevel = E_ERR
+loglevel = E_TRACE
 
 dbquery = """
 insert into mail_log (
@@ -72,7 +75,7 @@ insert into mail_log (
 
 """
 
-supported = [ 'postfix' ]
+supported = [ 'postfix', 'sendmail' ]
 
 PyLog = None
 
@@ -82,6 +85,7 @@ def log(severity, text):
 
 class PyLogAnalyzer:
     def __init__(self, filename, dbfile='cache.db', rule='postfix', skiplist=defskiplist):
+        self.log = log
         try:
             self.dbConn = connect(DBDSN)
             self.dbCurr = self.dbConn.cursor()
@@ -103,7 +107,6 @@ class PyLogAnalyzer:
             raise Exception, 'Rule not supported'
         self.rule = rule
         self.skiplist = skiplist
-        self.log = log
 
     def __del__(self):
         ## FIXME log in dtor is None
@@ -118,6 +121,7 @@ class PyLogAnalyzer:
         except:
             self.log(E_ALWAYS, 'Error closing logfile fd')
 
+        self.log(E_TRACE, 'Cache content: ' + str(self.db.keys()))
         try:
             self.db.close()
         except:
@@ -126,7 +130,9 @@ class PyLogAnalyzer:
         self.log(E_ALWAYS, 'Job Done')
 
     def insert(self, info):
-        log(E_TRACE, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
+        #log(E_TRACE, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
+        #log(E_TRACE, '[%(r_date)s --> %(d_date)s] %(delay)s' % info)
+        return True
 
         qs = dbquery % info
         try:
@@ -137,6 +143,11 @@ class PyLogAnalyzer:
             self.dbConn.rollback()
 
         return True
+
+    def delkey(self, key):
+        if self.db.has_key(key):
+            del self.db[key]
+            self.db.sync()
 
     def mainLoop(self):
         while 1:
@@ -181,7 +192,7 @@ class PyLogAnalyzer:
             hname = '_'.join([self.rule, subprocess])
             handler = getattr(self, hname, None)
             if handler is None:
-                #log(E_TRACE, 'Process function not found, ' + hname)
+                log(E_TRACE, 'Process function not found, ' + hname)
                 continue
 
             ## Map fields
@@ -209,12 +220,7 @@ class PyLogAnalyzer:
             if ref is None:
                 log(E_ERR, 'qmgr no ref')
             else:
-                if self.db.has_key(ref):
-                    del self.db[ref]
-                    self.db.sync()
-                    log(E_TRACE, 'qmgr removed ' + ref)
-                else:
-                    log(E_ERR, 'Missing key in cache ' + ref)
+                self.delkey(ref)
 #        else:
 #            # from=<root@eve.netfarm.it>, size=484, nrcpt=3 (queue active)
 #            res = re_qmgr.match(info['msg'])
@@ -238,7 +244,6 @@ class PyLogAnalyzer:
             return False
 
         if self.db[ref].find('|') == -1:
-            print ref
             log(E_ERR, 'Invalid ref value in the cache ' + ref)
             return False
 
@@ -328,6 +333,65 @@ class PyLogAnalyzer:
     def postfix_lmtp(self, info):
         return True
 
+    def sendmail_sendmail(self, info):
+        msg = info['msg']
+        ref = info['ref']
+        if msg.startswith('from=') and (msg.find('msgid=') != -1):
+            res = re_sendmid.match(msg)
+            if res is None: return True # no msgid line
+            mailfrom, size, nrcpts, mid, relay = res.groups()
+            if mailfrom == '<>': return True # no return path
+            self.db[ref] = '|'.join([info['ddatestr'], mid])
+            self.db.sync()
+        elif msg.startswith('to='):
+            res = re_sendstat.match(msg)
+            if res is None: # not parsable
+                # remove the reference
+                self.delkey(ref)
+                return True
+
+            ## TODO: parse mailto, understand delay value
+            mailto, delay, relay, dsn, status, msg = res.groups()
+
+            if not self.db.has_key(ref): return False
+            rdatestr, mid = self.db[ref].split('|', 1)
+            self.delkey(ref) # remove reference in cache
+
+            relay_host = relay ## TODO: parse
+            relay_port = 25
+
+            ## Parse delivery date
+            ddatestr = info['ddatestr']
+            try:
+                d_date = DateTimeFromString(ddatestr)
+            except:
+                log(E_ERR, 'Error parsing sent date string, ' + ddatestr)
+                return False
+
+            ## Parse received date
+            try:
+                r_date = DateTimeFromString(rdatestr)
+            except:
+                log(E_ERR, 'Error parsing received date string, ' + rdatestr)
+                return False
+
+            d = dict(message_id=mid, r_date=r_date.Format(), d_date=d_date.Format(),
+                 dsn=dsn,
+                 relay_host=relay_host,
+                 relay_port=relay_port,
+                 delay=delay,
+                 status=status.lower(),
+                 status_desc=msg[:512],
+                 mailto=mailto,
+                 ref=ref)
+            info.update(d)
+            return self.insert(info)
+        elif msg.startswith('SYSERR') or msg.startswith('timeout'): ## FIXME: a better way
+            self.delkey(ref)
+        else:
+            pass # ignored
+
+
 def sigtermHandler(signum, frame):
     log(E_ALWAYS, 'SiGTERM received')
 
@@ -340,5 +404,5 @@ if __name__ == '__main__':
         sys_exit()
 
     signal(SIGTERM, sigtermHandler)
-    PyLog = PyLogAnalyzer(argv[1])
+    PyLog = PyLogAnalyzer(argv[1], rule='sendmail')
     PyLog.mainLoop()
