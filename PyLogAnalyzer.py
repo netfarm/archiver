@@ -27,16 +27,10 @@ import re
 
 DBDSN = 'host=localhost dbname=mail user=archiver password=mail'
 
-re_line   = re.compile(r'(\w+\s+\d+\s+\d+:\d+:\d+) (.*?) (.*?)\[(\d*?)\]: (.*)')
-re_status = re.compile(r'to=(.*?), relay=(.*?), delay=(.*?), delays=(.*?), dsn=(.*?), status=(.*?) \((.*)\)')
-re_qmgr   = re.compile(r'from=(.*?), size=(\d*?), nrcpt=(\d*?)\s')
+re_line = re.compile(r'(\w+\s+\d+\s+\d+:\d+:\d+) (.*?) (.*?)\[(\d*?)\]: (.*)')
+re_msg  = re.compile(r'(\w+=.*?),')
 
-re_relay  = { 'smtp': re.compile(r'(.*?)\[(.*?)\]:(\d+)'), 'lmtp': re.compile(r'(.*?)()\[(.*?)\]') }
-
-re_sendmid = re.compile(r'from=(.*?), size=(\d*?), class=\d+, nrcpts=(\d*?), msgid=(.*?), proto=.*?, daemon=.*?, relay=(.*)')
-re_sendstat = re.compile(r'to=(.*?), delay=(.*?),.*, relay=(.*?), dsn=(.*?), stat=(.*?)\s(.*)')
-
-defskiplist   = [ '127.0.0.1', 'localhost' ]
+defskiplist = [ 'none', '127.0.0.1', 'localhost' ]
 
 E_ALWAYS = 0
 E_INFO   = 1
@@ -52,8 +46,7 @@ insert into mail_log (
     r_date,
     d_date,
     dsn,
-    relay_host,
-    relay_port,
+    relay,
     delay,
     status,
     status_desc,
@@ -64,8 +57,7 @@ insert into mail_log (
     '%(r_date)s',
     '%(d_date)s',
     '%(dsn)s',
-    '%(relay_host)s',
-    %(relay_port)s,
+    '%(relay)s',
     %(delay)s,
     '%(status)s',
     '%(status_desc)s',
@@ -126,8 +118,8 @@ class PyLogAnalyzer:
         self.log(E_ALWAYS, 'Job Done')
 
     def insert(self, info):
-        log(E_ERR, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
-        #log(E_TRACE, '[%(r_date)s --> %(d_date)s] %(delay)s' % info)
+        #log(E_ERR, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
+        #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
         return True
 
         qs = dbquery % info
@@ -204,14 +196,30 @@ class PyLogAnalyzer:
                         process=process,
                         subprocess=subprocess)
 
+            ## Parse/split all values
+            data = {}
+            parts = re_msg.split(msg)
+            if len(parts) == 0: continue
+            for part in parts:
+                part = part.strip()
+                if part.find('=') == -1: continue
+                key, value = part.split('=', 1)
+                data[key] = value
+
+            info.update(data)
+            if info.has_key('status'):
+                info['status'], info['status_desc'] = info['status'].split(' ', 1)
+
             ## TODO try/except
             res = handler(info.copy())
 
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
-        mid = info['msg'].split('=', 1).pop().strip()
-        ref = info['ref']
-        self.addkey(ref, '|'.join([info['ddatestr'], mid]))
+        if not info.has_key('message-id'):
+            self.log(E_ERR, 'postfix/cleanup got no message_id ' + info['msg'])
+            return False
+        ### note message-id and not message_id
+        self.addkey(info['ref'], '|'.join([info['ddatestr'], info['message-id']]))
 
     ## If qmgr removes from queue then, remove
     def postfix_qmgr(self, info):
@@ -247,86 +255,38 @@ class PyLogAnalyzer:
             log(E_ERR, 'Invalid ref value in the cache ' + ref)
             return False
 
-        ## Split and parse the msg
-        msg = info['msg']
-        res = re_status.match(msg)
+        if not info.has_key('to'): return False
 
-        if res is None:
-            log(E_ERR, 'Cannot parse message, ' + msg)
-            return False
+        if info.has_key('relay'):
+            info['relay'] = info['relay'].split('[')[0]
+        else:
+            info['relay'] = 'none'
 
-        ## Get important infos
-        mailto, relay, delay, delays, dsn, status, msg = res.groups()
+        if info['relay'] in self.skiplist: return True
 
-        ## Sanitize
-        status = status.lower().strip()
-        dsn = dsn.strip()
-        msg = msg.strip().replace('\n', '')
-
-        ## Parse delay float
+        ## Parse mailto using rfc822 module
         try:
-            delay = float(delay)
+            info['mailto'] = parseaddr(info['to'])[1]
         except:
-            delay = 0.0
-
-        ## Parse mailto with rfc822 module
-        try:
-            mailto = parseaddr(mailto)[1]
-        except:
-            log(E_ERR, 'Error while parsing mailto address, ' + mailto)
+            log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
             return False
 
         ## Parse delivery date
         ddatestr = info['ddatestr']
         try:
-            d_date = DateTimeFromString(ddatestr)
+            info['d_date'] = DateTimeFromString(ddatestr)
         except:
             log(E_ERR, 'Error parsing sent date string, ' + ddatestr)
             return False
 
         ## Parse received date
-        rdatestr, mid = self.db[ref].split('|', 1)
+        rdatestr, info['message_id'] = self.db[ref].split('|', 1)
         try:
-            r_date = DateTimeFromString(rdatestr)
+            info['r_date'] = DateTimeFromString(rdatestr)
         except:
             log(E_ERR, 'Error parsing received date string, ' + rdatestr)
             return False
 
-        ## Maybe deferred, relay is none
-        if relay == 'none':
-            relay_host = 'none'
-            relay_port = 0
-        else:
-            res = re_relay[info['subprocess']].match(relay)
-            if res is None:
-                log(E_ERR, 'Cannot parse relay address, ' + relay)
-                return False
-
-            ## Parse relay string
-            relay = res.groups()
-
-            ## Stop if we don't need the log
-            if relay[0] in self.skiplist:
-                return True
-
-            ### FIXME lmtp
-            relay_host = relay[0].strip()
-            try:
-                relay_port = int(relay[2].strip())
-            except:
-                relay_port = 25
-
-        d = dict(message_id=mid, r_date=r_date.Format(), d_date=d_date.Format(),
-                 dsn=dsn,
-                 relay_host=relay_host,
-                 relay_port=relay_port,
-                 delay=delay,
-                 status=status,
-                 status_desc=msg[:512],
-                 mailto=mailto,
-                 ref=ref)
-
-        info.update(d)
         return self.insert(info)
 
     #postfix_lmtp = postfix_smtp
@@ -334,59 +294,47 @@ class PyLogAnalyzer:
         return True
 
     def sendmail_sendmail(self, info):
-        msg = info['msg']
         ref = info['ref']
-        if msg.startswith('from=') and (msg.find('msgid=') != -1):
-            res = re_sendmid.match(msg)
-            if res is None: return True # no msgid line
-            mailfrom, size, nrcpts, mid, relay = res.groups()
-            if mailfrom == '<>': return True # no return path
-            self.addkey(ref, '|'.join([info['ddatestr'], mid]))
-        elif msg.startswith('to='):
-            res = re_sendstat.match(msg)
-            if res is None: # not parsable
-                # remove the reference
-                self.delkey(ref)
-                return True
-
-            ## TODO: parse mailto, understand delay value
-            mailto, delay, relay, dsn, status, msg = res.groups()
-
+        if info.has_key('from') and info.has_key('msgid'):
+            if info['from'] == '<>': return True # no return path
+            self.addkey(ref, '|'.join([info['ddatestr'], info['msgid']]))
+        elif info.has_key('to'):
             if not self.db.has_key(ref): return False
-            rdatestr, mid = self.db[ref].split('|', 1)
+            rdatestr, info['message_id'] = self.db[ref].split('|', 1)
             self.delkey(ref) # remove reference in cache
 
-            relay_host = relay ## TODO: parse
-            relay_port = 25
+            if info.has_key('relay'):
+                info['relay'] = info['relay'].split(' ', 1)[0]
+            else:
+                info['relay'] = 'none'
+
+            if info['relay'] in self.skiplist: return True
+
+            ## Parse mailto using rfc822 module
+            try:
+                info['mailto'] = parseaddr(info['to'])[1]
+            except:
+                log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
+                return False
 
             ## Parse delivery date
             ddatestr = info['ddatestr']
             try:
-                d_date = DateTimeFromString(ddatestr)
+                info['d_date'] = DateTimeFromString(ddatestr)
             except:
                 log(E_ERR, 'Error parsing sent date string, ' + ddatestr)
                 return False
 
             ## Parse received date
             try:
-                r_date = DateTimeFromString(rdatestr)
+                info['r_date'] = DateTimeFromString(rdatestr)
             except:
                 log(E_ERR, 'Error parsing received date string, ' + rdatestr)
                 return False
 
-            d = dict(message_id=mid, r_date=r_date.Format(), d_date=d_date.Format(),
-                 dsn=dsn,
-                 relay_host=relay_host,
-                 relay_port=relay_port,
-                 delay=delay,
-                 status=status.lower(),
-                 status_desc=msg[:512],
-                 mailto=mailto,
-                 ref=ref)
-            info.update(d)
+            info['status'], info['status_desc'] = info['stat'].split(' ', 1)
+            info['status'] = info['status'].lower()
             return self.insert(info)
-        elif msg.startswith('SYSERR') or msg.startswith('timeout'): ## FIXME: a better way
-            self.delkey(ref)
         else:
             pass # ignored
 
