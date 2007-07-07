@@ -44,7 +44,7 @@ E_WARN   = 2
 E_ERR    = 3
 E_TRACE  = 4
 
-loglevel = E_TRACE
+loglevel = E_ERR
 
 dbquery = """
 insert into mail_log (
@@ -75,8 +75,6 @@ insert into mail_log (
 
 """
 
-supported = [ 'postfix', 'sendmail' ]
-
 PyLog = None
 
 def log(severity, text):
@@ -84,8 +82,11 @@ def log(severity, text):
         print text
 
 class PyLogAnalyzer:
-    def __init__(self, filename, dbfile='cache.db', rule='postfix', skiplist=defskiplist):
+    def __init__(self, filename, dbfile='cache.db', sync=True, skiplist=defskiplist):
         self.log = log
+        self.skiplist = skiplist
+        self.sync = sync
+
         try:
             self.dbConn = connect(DBDSN)
             self.dbCurr = self.dbConn.cursor()
@@ -102,11 +103,6 @@ class PyLogAnalyzer:
         except:
             self.fd.close()
             raise Exception, 'Cannot open cache db'
-
-        if rule not in supported:
-            raise Exception, 'Rule not supported'
-        self.rule = rule
-        self.skiplist = skiplist
 
     def __del__(self):
         ## FIXME log in dtor is None
@@ -130,7 +126,7 @@ class PyLogAnalyzer:
         self.log(E_ALWAYS, 'Job Done')
 
     def insert(self, info):
-        #log(E_TRACE, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
+        log(E_ERR, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
         #log(E_TRACE, '[%(r_date)s --> %(d_date)s] %(delay)s' % info)
         return True
 
@@ -147,7 +143,11 @@ class PyLogAnalyzer:
     def delkey(self, key):
         if self.db.has_key(key):
             del self.db[key]
-            self.db.sync()
+            if self.sync: self.db.sync()
+
+    def addkey(self, key, value):
+        self.db[key] = value
+        if self.sync: self.db.sync()
 
     def mainLoop(self):
         while 1:
@@ -189,10 +189,10 @@ class PyLogAnalyzer:
                 continue
 
             ## Pick the needed parse method
-            hname = '_'.join([self.rule, subprocess])
+            hname = '_'.join([process, subprocess])
             handler = getattr(self, hname, None)
             if handler is None:
-                log(E_TRACE, 'Process function not found, ' + hname)
+                #log(E_TRACE, 'Process function not found, ' + hname)
                 continue
 
             ## Map fields
@@ -210,8 +210,8 @@ class PyLogAnalyzer:
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
         mid = info['msg'].split('=', 1).pop().strip()
-        self.db[info['ref']] = '|'.join([info['ddatestr'], mid])
-        self.db.sync()
+        ref = info['ref']
+        self.addkey(ref, '|'.join([info['ddatestr'], mid]))
 
     ## If qmgr removes from queue then, remove
     def postfix_qmgr(self, info):
@@ -341,8 +341,7 @@ class PyLogAnalyzer:
             if res is None: return True # no msgid line
             mailfrom, size, nrcpts, mid, relay = res.groups()
             if mailfrom == '<>': return True # no return path
-            self.db[ref] = '|'.join([info['ddatestr'], mid])
-            self.db.sync()
+            self.addkey(ref, '|'.join([info['ddatestr'], mid]))
         elif msg.startswith('to='):
             res = re_sendstat.match(msg)
             if res is None: # not parsable
@@ -404,5 +403,5 @@ if __name__ == '__main__':
         sys_exit()
 
     signal(SIGTERM, sigtermHandler)
-    PyLog = PyLogAnalyzer(argv[1], rule='sendmail')
+    PyLog = PyLogAnalyzer(argv[1])
     PyLog.mainLoop()
