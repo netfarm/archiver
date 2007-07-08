@@ -248,16 +248,6 @@ class PyLogAnalyzer:
                 log(E_ERR, 'qmgr no ref')
             else:
                 self.delkey(ref)
-#        else:
-#            # from=<root@eve.netfarm.it>, size=484, nrcpt=3 (queue active)
-#            res = re_qmgr.match(info['msg'])
-#            if res is None: continue
-#            mailfrom, size, nrcpt = res.groups()
-#            try:
-#                mailfrom = parseaddr(mailfrom)[1]
-#            except:
-#                continue
-
 
     def postfix_smtp(self, info):
         ## Check ref for validity
