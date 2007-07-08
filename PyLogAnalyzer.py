@@ -156,10 +156,7 @@ class PyLogAnalyzer:
         while 1:
             try:
                 ## Read a line
-                try:
-                    line = self.fd.readline().strip()
-                except (KeyboardInterrupt, IOError):
-                    break
+                line = self.fd.readline().strip()
 
                 ## No data, exit
                 if not len(line):
@@ -224,6 +221,8 @@ class PyLogAnalyzer:
 
                 ## TODO try/except
                 res = handler(info.copy())
+            except (KeyboardInterrupt, IOError):
+                break
             except:
                 t, val, tb = exc_info()
                 self.log(E_ERR, 'Runtime Error: ' + str(val))
