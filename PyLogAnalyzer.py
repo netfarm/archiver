@@ -19,6 +19,7 @@
 ## @file PyLogAnalyzer.py
 ## Netfarm Mail Archiver [loganalyzer]
 
+from sys import exc_info
 from anydbm import open as dbopen
 from rfc822 import parseaddr
 from mx.DateTime.Parser import DateTimeFromString
@@ -142,75 +143,80 @@ class PyLogAnalyzer:
 
     def mainLoop(self):
         while 1:
-            ## Read a line
             try:
-                line = self.fd.readline().strip()
-            except (KeyboardInterrupt, IOError):
-                break
+                ## Read a line
+                try:
+                    line = self.fd.readline().strip()
+                except (KeyboardInterrupt, IOError):
+                    break
 
-            ## No data, exit
-            if not len(line):
-                log(E_ALWAYS, 'No more data, exiting')
-                break
+                ## No data, exit
+                if not len(line):
+                    log(E_ALWAYS, 'No more data, exiting')
+                    break
 
-            ## Parse the line
-            res = re_line.match(line)
-            ## No match, continue
-            if res is None:
-                log(E_TRACE, 'No match on ' + line)
-                continue
+                ## Parse the line
+                res = re_line.match(line)
+                ## No match, continue
+                if res is None:
+                    log(E_TRACE, 'No match on ' + line)
+                    continue
 
-            ## Parse fields
-            ddatestr, host, name, pid, line = res.groups()
-            line = line.split(': ', 1)
-            if len(line) != 2: continue
-            ref, msg = line
+                ## Parse fields
+                ddatestr, host, name, pid, line = res.groups()
+                line = line.split(': ', 1)
+                if len(line) != 2: continue
+                ref, msg = line
 
-            ## Get process/subprocess
-            proc = name.split('/', 1)
-            if len(proc) == 1:
-                ## Single name
-                process = subprocess = proc[0]
-            elif len(proc) == 2:
-                ## process/subprocess
-                process, subprocess = proc
-            else:
-                ## How many slashes?
-                log(E_ERR, 'Too many slashes in process name ' + name)
-                continue
+                ## Get process/subprocess
+                proc = name.split('/', 1)
+                if len(proc) == 1:
+                    ## Single name
+                    process = subprocess = proc[0]
+                elif len(proc) == 2:
+                    ## process/subprocess
+                    process, subprocess = proc
+                else:
+                    ## How many slashes?
+                    log(E_ERR, 'Too many slashes in process name ' + name)
+                    continue
 
-            ## Pick the needed parse method
-            hname = '_'.join([process, subprocess])
-            handler = getattr(self, hname, None)
-            if handler is None:
-                #log(E_TRACE, 'Process function not found, ' + hname)
-                continue
+                ## Pick the needed parse method
+                hname = '_'.join([process, subprocess])
+                handler = getattr(self, hname, None)
+                if handler is None:
+                    #log(E_TRACE, 'Process function not found, ' + hname)
+                    continue
 
-            ## Map fields
-            info = dict(ddatestr=ddatestr,
-                        host=host,
-                        pid=pid,
-                        ref=ref,
-                        msg=msg,
-                        process=process,
-                        subprocess=subprocess)
+                ## Map fields
+                info = dict(ddatestr=ddatestr,
+                            host=host,
+                            pid=pid,
+                            ref=ref,
+                            msg=msg,
+                            process=process,
+                            subprocess=subprocess)
 
-            ## Parse/split all values
-            data = {}
-            parts = re_msg.split(msg)
-            if len(parts) == 0: continue
-            for part in parts:
-                part = part.strip()
-                if part.find('=') == -1: continue
-                key, value = part.split('=', 1)
-                data[key] = value
+                ## Parse/split all values
+                data = {}
+                parts = re_msg.split(msg)
+                if len(parts) == 0: continue
+                for part in parts:
+                    part = part.strip()
+                    if part.find('=') == -1: continue
+                    key, value = part.split('=', 1)
+                    data[key] = value
 
-            info.update(data)
-            if info.has_key('status'):
-                info['status'], info['status_desc'] = info['status'].split(' ', 1)
+                info.update(data)
+                if info.has_key('status'):
+                    info['status'], info['status_desc'] = info['status'].split(' ', 1)
 
-            ## TODO try/except
-            res = handler(info.copy())
+                ## TODO try/except
+                res = handler(info.copy())
+            except:
+                t, val, tb = exc_info()
+                self.log(E_ERR, 'Runtime Error: ' + str(val))
+                pass
 
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
