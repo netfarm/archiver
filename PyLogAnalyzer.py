@@ -337,6 +337,24 @@ class PyLogAnalyzer:
                 log(E_ERR, 'Error parsing received date string, ' + rdatestr)
                 return False
 
+            ## Parse delay
+            try:
+                hms = info['delay'].split(':')
+                seconds = int(hms[2])
+                seconds = seconds + (int(hms[1]) * 60)
+                if hms[0].find('+') == -1:
+                    d = 0
+                    h = int(hms[0])
+                else:
+                    d, h = hms[0].split('+')
+                    d = int(d)
+                    h = int(h)
+                seconds = seconds + (h * 60 * 60)
+                seconds = seconds + (d * 24 * 60 * 60)
+                info['delay'] = float(seconds)
+            except:
+                info['delay'] = 0.0
+
             info['status'], info['status_desc'] = info['stat'].split(' ', 1)
             info['status'] = info['status'].lower()
             return self.insert('mta', info)
