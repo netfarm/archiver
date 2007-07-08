@@ -109,7 +109,7 @@ class PyLogAnalyzer:
         except:
             self.log(E_ALWAYS, 'Error closing logfile fd')
 
-        self.log(E_TRACE, 'Cache content: ' + str(self.db.keys()))
+        #self.log(E_TRACE, 'Cache content: ' + str(self.db.keys()))
         try:
             self.db.close()
         except:
