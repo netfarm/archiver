@@ -317,6 +317,8 @@ class PyLogAnalyzer:
             else:
                 info['relay'] = 'none'
 
+            ## Conformance with postfix
+            if info['relay'][-1] == '.': info['relay'] = info['relay'][:-1]
             if info['relay'] in self.skiplist: return True
 
             ## Parse mailto using rfc822 module
