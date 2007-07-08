@@ -75,7 +75,6 @@ def log(severity, text):
     if severity <= loglevel:
         print text
 
-## FIXME: add more?
 def sqlquote(text):
     return text.replace("'", "\\'")
 
