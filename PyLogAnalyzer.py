@@ -40,7 +40,7 @@ E_TRACE  = 4
 
 loglevel = E_ERR
 
-dbquery = """
+queries = { 'mta':  """
 insert into mail_log (
     message_id,
     r_date,
@@ -65,7 +65,7 @@ insert into mail_log (
     '%(ref)s'
 );
 
-"""
+""" }
 
 PyLog = None
 
@@ -97,7 +97,6 @@ class PyLogAnalyzer:
             raise Exception, 'Cannot open cache db'
 
     def __del__(self):
-        ## FIXME log in dtor is None
         try:
             self.dbCurr.close()
             self.dbConn.close()
@@ -117,12 +116,12 @@ class PyLogAnalyzer:
 
         self.log(E_ALWAYS, 'Job Done')
 
-    def insert(self, info):
+    def insert(self, mode, info):
         #log(E_ERR, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
         #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
         return True
 
-        qs = dbquery % info
+        qs = queries[mode] % info
         try:
             self.dbCurr.execute(qs)
             self.dbConn.commit()
@@ -287,7 +286,7 @@ class PyLogAnalyzer:
             log(E_ERR, 'Error parsing received date string, ' + rdatestr)
             return False
 
-        return self.insert(info)
+        return self.insert('mta', info)
 
     #postfix_lmtp = postfix_smtp
     def postfix_lmtp(self, info):
@@ -334,7 +333,7 @@ class PyLogAnalyzer:
 
             info['status'], info['status_desc'] = info['stat'].split(' ', 1)
             info['status'] = info['status'].lower()
-            return self.insert(info)
+            return self.insert('mta', info)
         else:
             pass # ignored
 
