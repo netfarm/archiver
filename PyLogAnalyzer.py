@@ -20,6 +20,7 @@
 ## Netfarm Mail Archiver [loganalyzer]
 
 from sys import exc_info
+from types import StringType
 from anydbm import open as dbopen
 from rfc822 import parseaddr
 from mx.DateTime.Parser import DateTimeFromString
@@ -74,6 +75,15 @@ def log(severity, text):
     if severity <= loglevel:
         print text
 
+## FIXME: add more?
+def sqlquote(text):
+    return text.replace("'", "\\'")
+
+def quotedict(info):
+    for key in info.keys():
+        if type(info[key]) == StringType:
+            info[key] = sqlquote(info[key])
+
 class PyLogAnalyzer:
     def __init__(self, filename, dbfile='cache.db', sync=True, skiplist=defskiplist):
         self.log = log
@@ -120,7 +130,8 @@ class PyLogAnalyzer:
     def insert(self, mode, info):
         #log(E_ERR, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
         #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
-        return True
+
+        quotedict(info)
 
         qs = queries[mode] % info
         try:
