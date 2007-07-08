@@ -133,6 +133,11 @@ class PyLogAnalyzer:
 
         quotedict(info)
 
+        ## remove ( and )
+        sd = info['status_desc']
+        if (sd[0] == '(') and (sd[-1] == ')'):
+            info['status_desc'] = sd[1:-1]
+
         qs = queries[mode] % info
         try:
             self.dbCurr.execute(qs)
