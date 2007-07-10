@@ -221,7 +221,6 @@ class PyLogAnalyzer:
 
                 info.update(data)
 
-                ## TODO try/except
                 res = handler(info.copy())
             except (KeyboardInterrupt, IOError):
                 break
@@ -316,6 +315,7 @@ class PyLogAnalyzer:
             if not self.db.has_key(ref): return False
             rdatestr, info['message_id'] = self.db[ref].split('|', 1)
 
+            ## Sendmail messages are not easy to parse
             status = info['stat']
             if status.startswith('Sent '):
                 status, statusdesc = 'sent', status.split('Sent ', 1).pop()
