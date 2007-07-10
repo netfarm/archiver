@@ -118,7 +118,7 @@ class PyLogAnalyzer:
         except:
             self.log(E_ALWAYS, 'Error closing logfile fd')
 
-        #self.log(E_TRACE, 'Cache content: ' + str(self.db.keys()))
+        self.log(E_ERR, 'Cache content: ' + str(self.db.keys()))
         try:
             self.db.close()
         except:
@@ -127,15 +127,10 @@ class PyLogAnalyzer:
         self.log(E_ALWAYS, 'Job Done')
 
     def insert(self, mode, info):
-        #log(E_ERR, '%(message_id)s %(mailto)s [%(r_date)s --> %(d_date)s] %(ref)s %(dsn)s %(status)s %(relay_host)s:%(relay_port)s' % info)
         #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
+        #log(E_ERR, '%(ref)s: %(status)s - %(status_desc)s' % info)
 
         quotedict(info)
-
-        ## remove ( and )
-        sd = info['status_desc']
-        if (sd[0] == '(') and (sd[-1] == ')'):
-            info['status_desc'] = sd[1:-1]
 
         qs = queries[mode] % info
         try:
@@ -220,8 +215,8 @@ class PyLogAnalyzer:
                     data[key] = value
 
                 info.update(data)
-                if info.has_key('status'):
-                    info['status'], info['status_desc'] = info['status'].split(' ', 1)
+                #if info.has_key('status'):
+                #    info['status'], info['status_desc'] = info['status'].split(' ', 1)
 
                 ## TODO try/except
                 res = handler(info.copy())
@@ -310,7 +305,22 @@ class PyLogAnalyzer:
         elif info.has_key('to'):
             if not self.db.has_key(ref): return False
             rdatestr, info['message_id'] = self.db[ref].split('|', 1)
-            self.delkey(ref) # remove reference in cache
+
+            status = info['stat']
+            if status.startswith('Sent '):
+                status, statusdesc = 'sent', status.split('Sent ', 1).pop()
+            elif status.startswith('Deferred: '):
+                status, statusdesc = 'deferred', status.split('Deferred: ', 1).pop()
+            else:
+                status, statusdesc = 'unknown', status
+
+            if status != 'deferred': self.delkey(ref) # remove reference in cache
+
+            info['status'] = status
+            ## remove ( and )
+            if (statusdesc[0] == '(') and (statusdesc[-1] == ')'):
+                statusdesc = statusdesc[1:-1]
+            info['status_desc'] = statusdesc
 
             if info.has_key('relay'):
                 info['relay'] = info['relay'].split(' ', 1)[0]
@@ -361,10 +371,9 @@ class PyLogAnalyzer:
             except:
                 info['delay'] = 0.0
 
-            info['status'], info['status_desc'] = info['stat'].split(' ', 1)
-            info['status'] = info['status'].lower()
             return self.insert('mta', info)
         else:
+            self.delkey(ref) # remove reference in cache
             pass # ignored
 
 
