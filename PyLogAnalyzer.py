@@ -32,6 +32,8 @@ DBDSN = 'host=localhost dbname=mail user=archiver password=mail'
 re_line = re.compile(r'(\w+\s+\d+\s+\d+:\d+:\d+) (.*?) (.*?)\[(\d*?)\]: (.*)')
 re_msg  = re.compile(r'(\w+=.*?),')
 
+re_pstat = re.compile(r'(\w+) \((.*)\)')
+
 defskiplist = [ 'none', '127.0.0.1', 'localhost' ]
 
 E_ALWAYS = 0
@@ -218,8 +220,6 @@ class PyLogAnalyzer:
                     data[key] = value
 
                 info.update(data)
-                #if info.has_key('status'):
-                #    info['status'], info['status_desc'] = info['status'].split(' ', 1)
 
                 ## TODO try/except
                 res = handler(info.copy())
@@ -293,6 +293,13 @@ class PyLogAnalyzer:
         except:
             log(E_ERR, 'Error parsing received date string, ' + rdatestr)
             return False
+
+        ## Parse status
+        res = re_pstat.match(info['status'])
+        if res:
+            info['status'], info['status_desc'] = res.groups()
+        else:
+            info['status'], info['status_desc'] = 'unknown', info['status']
 
         return self.insert('mta', info)
 
