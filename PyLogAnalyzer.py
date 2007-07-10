@@ -19,7 +19,7 @@
 ## @file PyLogAnalyzer.py
 ## Netfarm Mail Archiver [loganalyzer]
 
-from sys import exc_info
+from sys import exc_info, stdin
 from types import StringType
 from anydbm import open as dbopen
 from rfc822 import parseaddr
@@ -96,7 +96,10 @@ class PyLogAnalyzer:
             raise Exception, 'Cannot connect to DB'
 
         try:
-            self.fd = open(filename, 'r')
+            if filename == '-':
+                self.fd = stdin
+            else:
+                self.fd = open(filename, 'r')
         except:
             raise Exception, 'Cannot open log file'
 
