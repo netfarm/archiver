@@ -138,7 +138,7 @@ class PyLogAnalyzer:
         #log(E_ERR, str(info.keys()))
         #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
         #log(E_ERR, '%(ref)s: %(status)s - %(status_desc)s' % info)
- 
+
         quotedict(info)
 
         qs = query % info
@@ -234,14 +234,16 @@ class PyLogAnalyzer:
 
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
+        """ Collects message_id and inserts the record with the placeholder """
         if not info.has_key('message-id'):
             self.log(E_ERR, 'postfix/cleanup got no message_id ' + info['msg'])
             return False
         info['message_id'] = info['message-id']
         return self.query(q_postfix_msgid, info)
-    
+
     ## qmgr log have from or queue deletions
     def postfix_qmgr(self, info):
+        """ Collects from, size and nrcpt and updates record of postfix/cleanup """
         if not info.has_key('from'): return True # removed
 
         try:
@@ -264,6 +266,7 @@ class PyLogAnalyzer:
         return self.query(q_postfix_update, info)
 
     def postfix_smtp(self, info):
+        """ Picks mail_id from the record of postfix/cleanup and fills mail_log_out entry """
         if not info.has_key('to'): return False # no need
 
         ref = info['ref']
