@@ -21,7 +21,6 @@
 
 from sys import exc_info, stdin
 from types import StringType
-from anydbm import open as dbopen
 from rfc822 import parseaddr
 from mx.DateTime.Parser import DateTimeFromString
 from psycopg2 import connect
@@ -44,32 +43,48 @@ E_TRACE  = 4
 
 loglevel = E_ERR
 
-queries = { 'mta':  """
-insert into mail_log (
+### Queries
+
+q_postfix_msgid = """
+insert into mail_log_in (
     message_id,
     r_date,
+    ref
+) values (
+    '%(message_id)s',
+    '%(date)s',
+    '%(ref)s'
+);"""
+
+q_postfix_update = """
+update mail_log_in set
+    mailfrom  = '%(mailfrom)s',
+    mail_size = %(mail_size)d,
+    nrcpts    = %(nrcpts)d
+where ref = '%(ref)s';
+"""
+
+q_out = """
+insert into mail_log_out (
+    mail_id,
     d_date,
     dsn,
     relay,
     delay,
     status,
     status_desc,
-    mailto,
-    ref
+    mailto
 ) values (
-    '%(message_id)s',
-    '%(r_date)s',
-    '%(d_date)s',
+    get_mail_id('%(ref)s'),
+    '%(date)s',
     '%(dsn)s',
     '%(relay)s',
-    %(delay)s,
+    %(delay)d,
     '%(status)s',
     '%(status_desc)s',
-    '%(mailto)s',
-    '%(ref)s'
+    '%(mailto)s'
 );
-
-""" }
+"""
 
 PyLog = None
 
@@ -105,12 +120,6 @@ class PyLogAnalyzer:
         except:
             raise Exception, 'Cannot open log file'
 
-        try:
-            self.db = dbopen(dbfile, 'c')
-        except:
-            self.fd.close()
-            raise Exception, 'Cannot open cache db'
-
     def __del__(self):
         try:
             self.dbCurr.close()
@@ -123,38 +132,25 @@ class PyLogAnalyzer:
         except:
             self.log(E_ALWAYS, 'Error closing logfile fd')
 
-        self.log(E_ERR, 'Cache content: ' + str(self.db.keys()))
-        try:
-            self.db.close()
-        except:
-            self.log(E_ALWAYS, 'Error closing cache db')
-
         self.log(E_ALWAYS, 'Job Done')
 
-    def insert(self, mode, info):
+    def query(self, query, info):
+        #log(E_ERR, str(info.keys()))
         #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
         #log(E_ERR, '%(ref)s: %(status)s - %(status_desc)s' % info)
-
+ 
         quotedict(info)
 
-        qs = queries[mode] % info
+        qs = query % info
         try:
             self.dbCurr.execute(qs)
             self.dbConn.commit()
         except:
+            ## TODO Traceback
             log(E_ERR, 'DB Query Error')
             self.dbConn.rollback()
 
         return True
-
-    def delkey(self, key):
-        if self.db.has_key(key):
-            del self.db[key]
-            if self.sync: self.db.sync()
-
-    def addkey(self, key, value):
-        self.db[key] = value
-        if self.sync: self.db.sync()
 
     def mainLoop(self):
         while 1:
@@ -174,11 +170,18 @@ class PyLogAnalyzer:
                     log(E_TRACE, 'No match on ' + line)
                     continue
 
-                ## Parse fields
-                ddatestr, host, name, pid, line = res.groups()
+                ## split fields
+                datestr, host, name, pid, line = res.groups()
                 line = line.split(': ', 1)
                 if len(line) != 2: continue
                 ref, msg = line
+
+                ## Parse date
+                try:
+                    date = DateTimeFromString(datestr).Format()
+                except:
+                    log(E_ERR, 'Error parsing date, ' + datestr)
+                    continue
 
                 ## Get process/subprocess
                 proc = name.split('/', 1)
@@ -201,7 +204,7 @@ class PyLogAnalyzer:
                     continue
 
                 ## Map fields
-                info = dict(ddatestr=ddatestr,
+                info = dict(date=date,
                             host=host,
                             pid=pid,
                             ref=ref,
@@ -224,44 +227,49 @@ class PyLogAnalyzer:
                 res = handler(info.copy())
             except (KeyboardInterrupt, IOError):
                 break
-            except:
-                t, val, tb = exc_info()
-                self.log(E_ERR, 'Runtime Error: ' + str(val))
-                pass
+            #except:
+            #    t, val, tb = exc_info()
+            #    self.log(E_ERR, 'Runtime Error: ' + str(val))
+            #    pass
 
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
         if not info.has_key('message-id'):
             self.log(E_ERR, 'postfix/cleanup got no message_id ' + info['msg'])
             return False
-        ### note message-id and not message_id
-        self.addkey(info['ref'], '|'.join([info['ddatestr'], info['message-id']]))
-
-    ## If qmgr removes from queue then, remove
+        info['message_id'] = info['message-id']
+        return self.query(q_postfix_msgid, info)
+    
+    ## qmgr log have from or queue deletions
     def postfix_qmgr(self, info):
-        if info['msg'].lower() == 'removed':
-            ref = info.get('ref', None)
-            if ref is None:
-                log(E_ERR, 'qmgr no ref')
-            else:
-                self.delkey(ref)
+        if not info.has_key('from'): return True # removed
+
+        try:
+            info['mail_size'] = long(info['size'])
+        except:
+            info['mail_size'] = 0
+
+        try:
+            info['nrcpts'] = long(info['nrcpt'].split(' ', 1)[0])
+        except:
+            info['nrcpts'] = 0
+
+        ## Parse mailfrom using rfc822 module
+        try:
+            info['mailfrom'] = parseaddr(info['from'])[1]
+        except:
+            log(E_ERR, 'Error while parsing mailfrom address, ' + info['from'])
+            return False
+
+        return self.query(q_postfix_update, info)
 
     def postfix_smtp(self, info):
-        ## Check ref for validity
+        if not info.has_key('to'): return False # no need
+
         ref = info['ref']
 
         ## Skip 'connect to' - FIXME find a better way
         if len(ref) != 11: return False
-
-        if not self.db.has_key(ref):
-            log(E_TRACE, 'No ref match in the cache, ' + ref)
-            return False
-
-        if self.db[ref].find('|') == -1:
-            log(E_ERR, 'Invalid ref value in the cache ' + ref)
-            return False
-
-        if not info.has_key('to'): return False
 
         if info.has_key('relay'):
             info['relay'] = info['relay'].split('[')[0]
@@ -270,27 +278,16 @@ class PyLogAnalyzer:
 
         if info['relay'] in self.skiplist: return True
 
+        try:
+            info['delay'] = long(info['delay'])
+        except:
+            info['delay'] = 0
+
         ## Parse mailto using rfc822 module
         try:
             info['mailto'] = parseaddr(info['to'])[1]
         except:
             log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
-            return False
-
-        ## Parse delivery date
-        ddatestr = info['ddatestr']
-        try:
-            info['d_date'] = DateTimeFromString(ddatestr)
-        except:
-            log(E_ERR, 'Error parsing sent date string, ' + ddatestr)
-            return False
-
-        ## Parse received date
-        rdatestr, info['message_id'] = self.db[ref].split('|', 1)
-        try:
-            info['r_date'] = DateTimeFromString(rdatestr)
-        except:
-            log(E_ERR, 'Error parsing received date string, ' + rdatestr)
             return False
 
         ## Parse status
@@ -300,20 +297,16 @@ class PyLogAnalyzer:
         else:
             info['status'], info['status_desc'] = 'unknown', info['status']
 
-        return self.insert('mta', info)
-
-    #postfix_lmtp = postfix_smtp
-    def postfix_lmtp(self, info):
-        return True
+        return self.query(q_out, info)
 
     def sendmail_sendmail(self, info):
         ref = info['ref']
         if info.has_key('from') and info.has_key('msgid'):
             if info['from'] == '<>': return True # no return path
-            self.addkey(ref, '|'.join([info['ddatestr'], info['msgid']]))
+            #self.addkey(ref, '|'.join([info['ddatestr'], info['msgid']]))
         elif info.has_key('to'):
-            if not self.db.has_key(ref): return False
-            rdatestr, info['message_id'] = self.db[ref].split('|', 1)
+            #if not self.db.has_key(ref): return False
+            #rdatestr, info['message_id'] = self.db[ref].split('|', 1)
 
             ## Sendmail messages are not easy to parse
             status = info['stat']
@@ -324,7 +317,7 @@ class PyLogAnalyzer:
             else:
                 status, statusdesc = 'unknown', status
 
-            if status != 'deferred': self.delkey(ref) # remove reference in cache
+            #if status != 'deferred': self.delkey(ref) # remove reference in cache
 
             info['status'] = status
             ## remove ( and )
@@ -377,13 +370,13 @@ class PyLogAnalyzer:
                     h = int(h)
                 seconds = seconds + (h * 60 * 60)
                 seconds = seconds + (d * 24 * 60 * 60)
-                info['delay'] = float(seconds)
+                info['delay'] = long(seconds)
             except:
-                info['delay'] = 0.0
+                info['delay'] = 0
 
-            return self.insert('mta', info)
+            #return self.insert('mta', info)
         else:
-            self.delkey(ref) # remove reference in cache
+            #self.delkey(ref) # remove reference in cache
             pass # ignored
 
 
