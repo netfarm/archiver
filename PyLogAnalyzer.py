@@ -287,10 +287,8 @@ class PyLogAnalyzer:
         """ Picks mail_id from the record of postfix/cleanup and fills mail_log_out entry """
         if not info.has_key('to'): return False # no need
 
-        ref = info['ref']
-
         ## Skip 'connect to' - FIXME find a better way
-        if len(ref) != 11: return False
+        if len(info['ref']) != 11: return False
 
         if info.has_key('relay'):
             info['relay'] = info['relay'].split('[')[0]
