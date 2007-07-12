@@ -338,7 +338,6 @@ class PyLogAnalyzer:
             return self.query(q_sendmail_in, info)
         elif info.has_key('to'):
             ## Collects to, delay, relay, dns, status and status_desc
-
             ## Sendmail messages are not easy to parse
             status = info['stat']
             if status.startswith('Sent '):
