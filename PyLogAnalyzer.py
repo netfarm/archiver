@@ -245,10 +245,10 @@ class PyLogAnalyzer:
                 res = handler(info.copy())
             except (KeyboardInterrupt, IOError):
                 break
-            #except:
-            #    t, val, tb = exc_info()
-            #    self.log(E_ERR, 'Runtime Error: ' + str(val))
-            #    pass
+            except:
+                t, val, tb = exc_info()
+                self.log(E_ERR, 'Runtime Error: ' + str(val))
+                pass
 
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
