@@ -119,10 +119,9 @@ def quotedict(info):
             info[key] = sqlquote(info[key])
 
 class PyLogAnalyzer:
-    def __init__(self, filename, dbfile='cache.db', sync=True, skiplist=defskiplist):
+    def __init__(self, filename, skiplist=defskiplist):
         self.log = log
         self.skiplist = skiplist
-        self.sync = sync
 
         try:
             self.dbConn = connect(DBDSN)
