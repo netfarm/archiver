@@ -77,9 +77,16 @@ insert into mail_log_in (
     '%(message_id)s',
     '%(date)s',
     %(mail_size)d,
-    %(nrcpts),
+    %(nrcpts)d,
     '%(ref)s'
 );
+"""
+
+q_mail_id = """
+select id from mail_log_in
+where ref = '%(ref)s'
+order by r_date desc
+limit 1;
 """
 
 q_out = """
@@ -93,7 +100,7 @@ insert into mail_log_out (
     status_desc,
     mailto
 ) values (
-    get_mail_id('%(ref)s'),
+    %(mail_id)d,
     '%(date)s',
     '%(dsn)s',
     '%(relay)s',
@@ -125,7 +132,7 @@ class PyLogAnalyzer:
 
         try:
             self.dbConn = connect(DBDSN)
-            self.dbCurr = self.dbConn.cursor()
+            self.dbCursor = self.dbConn.cursor()
         except:
             raise Exception, 'Cannot connect to DB'
 
@@ -139,7 +146,7 @@ class PyLogAnalyzer:
 
     def __del__(self):
         try:
-            self.dbCurr.close()
+            self.dbCursor.close()
             self.dbConn.close()
         except:
             self.log(E_ALWAYS, 'Error closing connection to DB')
@@ -151,24 +158,20 @@ class PyLogAnalyzer:
 
         self.log(E_ALWAYS, 'Job Done')
 
-    def query(self, query, info):
-        #log(E_ERR, str(info.keys()))
-        #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
-        #log(E_ERR, '%(ref)s: %(status)s - %(status_desc)s' % info)
-
-        #return False
+    def query(self, query, info, fetch=False):
         quotedict(info)
-
         qs = query % info
+
         try:
-            self.dbCurr.execute(qs)
+            self.dbCursor.execute(qs)
             self.dbConn.commit()
         except:
             ## TODO Traceback
             log(E_ERR, 'DB Query Error')
             self.dbConn.rollback()
+            return None
 
-        return True
+        if fetch: return self.dbCursor.fetchone()
 
     def mainLoop(self):
         while 1:
@@ -217,9 +220,7 @@ class PyLogAnalyzer:
                 ## Pick the needed parse method
                 hname = '_'.join([process, subprocess])
                 handler = getattr(self, hname, None)
-                if handler is None:
-                    #log(E_TRACE, 'Process function not found, ' + hname)
-                    continue
+                if handler is None: continue
 
                 ## Map fields
                 info = dict(date=date,
@@ -247,7 +248,7 @@ class PyLogAnalyzer:
                 break
             except:
                 t, val, tb = exc_info()
-                self.log(E_ERR, 'Runtime Error: ' + str(val))
+                self.log(E_ERR, 'Runtime Error: ' + str(val)) ## FIXME: add traceback
                 pass
 
     ## Merge message_id and date and put them into the cache db
@@ -290,6 +291,11 @@ class PyLogAnalyzer:
         ## Skip 'connect to' - FIXME find a better way
         if len(info['ref']) != 11: return False
 
+        ## Retrieve ref's mail_id
+        mail_id = self.query(q_mail_id, info, fetch=True)
+        if mail_id is None: return False
+        info['mail_id'] = mail_id[0]
+
         if info.has_key('relay'):
             info['relay'] = info['relay'].split('[')[0]
         else:
@@ -323,6 +329,7 @@ class PyLogAnalyzer:
         if info.has_key('from') and info.has_key('msgid'):
             ## Collects from, message_id and nrctps
             if info['from'] == '<>': return True # no return path
+
             ## Parse mailfrom using rfc822 module
             try:
                 info['mailfrom'] = parseaddr(info['from'])[1]
@@ -331,13 +338,27 @@ class PyLogAnalyzer:
                 return False
 
             try:
+                info['mail_size'] = long(info['size'])
+            except:
+                info['mail_size'] = 0
+
+            try:
                 info['nrcpts'] = long(info['nrcpts'])
             except:
                 info['nrcpts'] = 0
 
+            ## Now message_id as required dict key
+            info['message_id'] = info['msgid']
+
             return self.query(q_sendmail_in, info)
         elif info.has_key('to'):
             ## Collects to, delay, relay, dns, status and status_desc
+
+            ## First check if we have a corresponding mail_id
+            mail_id = self.query(q_mail_id, info, fetch=True)
+            if mail_id is None: return False
+            info['mail_id'] = mail_id[0]
+
             ## Sendmail messages are not easy to parse
             status = info['stat']
             if status.startswith('Sent '):
