@@ -64,6 +64,24 @@ update mail_log_in set
 where ref = '%(ref)s';
 """
 
+q_sendmail_in = """
+insert into mail_log_in (
+    mailfrom,
+    message_id,
+    r_date,
+    mail_size,
+    nrcpts,
+    ref
+) values (
+    '%(mailfrom)s',
+    '%(message_id)s',
+    '%(date)s',
+    %(mail_size)d,
+    %(nrcpts),
+    '%(ref)s'
+);
+"""
+
 q_out = """
 insert into mail_log_out (
     mail_id,
@@ -139,6 +157,7 @@ class PyLogAnalyzer:
         #log(E_ERR, '%(ref)s [%(r_date)s --> %(d_date)s] %(delay)s' % info)
         #log(E_ERR, '%(ref)s: %(status)s - %(status_desc)s' % info)
 
+        #return False
         quotedict(info)
 
         qs = query % info
@@ -303,13 +322,25 @@ class PyLogAnalyzer:
         return self.query(q_out, info)
 
     def sendmail_sendmail(self, info):
-        ref = info['ref']
+        """ Collects two stages of sendmail log """
         if info.has_key('from') and info.has_key('msgid'):
+            ## Collects from, message_id and nrctps
             if info['from'] == '<>': return True # no return path
-            #self.addkey(ref, '|'.join([info['ddatestr'], info['msgid']]))
+            ## Parse mailfrom using rfc822 module
+            try:
+                info['mailfrom'] = parseaddr(info['from'])[1]
+            except:
+                log(E_ERR, 'Error while parsing mailfrom address, ' + info['from'])
+                return False
+
+            try:
+                info['nrcpts'] = long(info['nrcpts'])
+            except:
+                info['nrcpts'] = 0
+
+            return self.query(q_sendmail_in, info)
         elif info.has_key('to'):
-            #if not self.db.has_key(ref): return False
-            #rdatestr, info['message_id'] = self.db[ref].split('|', 1)
+            ## Collects to, delay, relay, dns, status and status_desc
 
             ## Sendmail messages are not easy to parse
             status = info['stat']
@@ -319,8 +350,6 @@ class PyLogAnalyzer:
                 status, statusdesc = 'deferred', status.split('Deferred: ', 1).pop()
             else:
                 status, statusdesc = 'unknown', status
-
-            #if status != 'deferred': self.delkey(ref) # remove reference in cache
 
             info['status'] = status
             ## remove ( and )
@@ -344,21 +373,6 @@ class PyLogAnalyzer:
                 log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
                 return False
 
-            ## Parse delivery date
-            ddatestr = info['ddatestr']
-            try:
-                info['d_date'] = DateTimeFromString(ddatestr)
-            except:
-                log(E_ERR, 'Error parsing sent date string, ' + ddatestr)
-                return False
-
-            ## Parse received date
-            try:
-                info['r_date'] = DateTimeFromString(rdatestr)
-            except:
-                log(E_ERR, 'Error parsing received date string, ' + rdatestr)
-                return False
-
             ## Parse delay
             try:
                 hms = info['delay'].split(':')
@@ -377,9 +391,8 @@ class PyLogAnalyzer:
             except:
                 info['delay'] = 0
 
-            #return self.insert('mta', info)
+            return self.query(q_out, info)
         else:
-            #self.delkey(ref) # remove reference in cache
             pass # ignored
 
 
