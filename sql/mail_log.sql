@@ -1,3 +1,6 @@
+drop table mail_log_out;
+drop table mail_log_in;
+
 create table mail_log_in (
     id serial primary key,
     mailfrom varchar(256),
@@ -26,3 +29,7 @@ create table mail_log_out (
 create index idx_mail_log_out_mail_id on mail_log_out using btree (mail_id);
 create index idx_mail_log_out_d_date on mail_log_out using btree (d_date);
 create index idx_mail_log_out_mailto on mail_log_out using btree (mailto);
+
+create function get_mail_id(varchar(256)) returns integer as $$
+select id as results from mail_log_in where ref = $1 order by r_date desc;
+$$ language sql;
