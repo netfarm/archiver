@@ -61,7 +61,11 @@ update mail_log_in set
     mailfrom  = '%(mailfrom)s',
     mail_size = %(mail_size)d,
     nrcpts    = %(nrcpts)d
-where ref = '%(ref)s';
+where id in (select id 
+             from mail_log_in 
+             where ref = '%(ref)s' 
+             order by r_date desc 
+             limit 1);
 """
 
 q_sendmail_in = """

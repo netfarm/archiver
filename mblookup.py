@@ -68,3 +68,23 @@ def getusers(emails, dbfiles):
     results.sort()
 
     return results
+
+if __name__ == '__main__':
+    from anydbm import open as dbopen
+    from sys import argv
+    dbfiles = dict(virtual=dict(db={}), aliases=dict(db={}))
+
+    # Virtual
+    db = dbopen('/etc/postfix/virtual.db', 'r')
+    dbfiles['virtual']['db'].update(db)
+    db.close()
+
+    # Aliases
+    db = dbopen('/etc/postfix/aliases.db', 'r')
+    dbfiles['aliases']['db'].update(db)
+    db.close()
+
+    if len(argv) > 1:
+        print getusers(argv[1:], dbfiles)
+    else:
+        print 'Usage %s: email [email email ...]' % argv[0]
