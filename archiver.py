@@ -797,6 +797,7 @@ class DBChecker(Thread):
         from mblookup import getusers
         self.getusers = getusers
         self.dbfiles = dbfiles
+        self.postuser = None
         self.ev = Event()
         self.running = True
         self.timeout = timeout
@@ -804,7 +805,19 @@ class DBChecker(Thread):
         self.updatedblist()
         Thread.__init__(self)
 
+    def getpuser(self):
+        try:
+            fd = open('/etc/imapd.conf', 'r')
+            for line in fd:
+                line = line.strip()
+                if line.startswith('postuser:'):
+                    self.postuser = line.split(':', 1).pop().strip()
+                    break
+            fd.close()
+        except: pass
+
     def run(self):
+        self.getpuser()
         while self.running:
             #LOG(E_TRACE, '[DBChecker] CheckPoint')
             self.updatedblist()
@@ -873,7 +886,7 @@ class DBChecker(Thread):
             return []
 
         self.lock.acquire()
-        res = self.getusers(emails, self.dbfiles)
+        res = self.getusers(emails, self.dbfiles, self.postuser)
         self.lock.release()
         return res
 
