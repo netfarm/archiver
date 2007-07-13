@@ -19,6 +19,7 @@
 ## Helper MailBox Lookup using postfix/cyrus
 
 from types import ListType
+from grp import getgrnam
 
 __doc__ = '''Netfarm Archiver - release 2.1.0 - Postfix mailbox lookup'''
 __version__ = '2.1.0'
@@ -61,9 +62,19 @@ def getusers(emails, dbfiles, postuser=None):
         res = res + lookup(email, db)
 
     # Uniq + Sort
-    for r in res:
-        if not r in results:
-            results.append(r)
+    for mb in res:
+        if mb in results: continue
+        if mb.find('+') == -1:
+            results.append(mb)
+        else: ## Shared mailbox / direct folder post
+            p, s = mb.split('+', 1)
+            if postuser is not None and postuser == p:
+                # postuser+group
+                try:
+                    results = results + getgrnam(s)[3] # TODO check for duplicates
+                except: pass
+            else: # user+folder
+                mb = p
     results.sort()
 
     return results
