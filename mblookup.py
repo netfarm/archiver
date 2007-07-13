@@ -71,7 +71,12 @@ def getusers(emails, dbfiles):
 
 if __name__ == '__main__':
     from anydbm import open as dbopen
-    from sys import argv
+    from sys import argv, exit as sys_exit
+
+    if len(argv) < 2:
+        print 'Usage %s: email [email email ...]' % argv[0]
+        sys_exit(0)
+
     dbfiles = dict(virtual=dict(db={}), aliases=dict(db={}))
 
     # Virtual
@@ -84,7 +89,4 @@ if __name__ == '__main__':
     dbfiles['aliases']['db'].update(db)
     db.close()
 
-    if len(argv) > 1:
-        print getusers(argv[1:], dbfiles)
-    else:
-        print 'Usage %s: email [email email ...]' % argv[0]
+    print getusers(argv[1:], dbfiles)
