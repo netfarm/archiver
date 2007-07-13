@@ -15,10 +15,9 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 # ======================================================================
-## @file compress.py
-## Helper MailBox Lookup using postfix
+## @file mblookup.py
+## Helper MailBox Lookup using postfix/cyrus
 
-from anydbm import open as opendb
 from types import ListType
 
 __doc__ = '''Netfarm Archiver - release 2.1.0 - Postfix mailbox lookup'''
