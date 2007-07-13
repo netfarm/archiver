@@ -7,7 +7,7 @@ CONTRIB=$(wildcard sql/*.sql) $(wildcard postfix/*.cf)
 BACKENDS=$(wildcard backend_*.py)
 MODULES=$(BACKENDS) archiver.py PyLogAnalyzer.py archiver_svc.py lmtp.py compress.py
 
-CONFS=archiver.ini archiver-win32.ini .pycheckrc
+CONFS=archiver.conf archiver-win32.ini .pycheckrc
 TOOLS=setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
 DOCS=copyright.txt TODO structure.txt
 TESTFILES=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
