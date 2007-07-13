@@ -49,7 +49,7 @@ def lookup(email, db):
     bc = []
     return lookup_alias(value, db, bc)
 
-def getusers(emails, dbfiles):
+def getusers(emails, dbfiles, postuser=None):
     if (type(emails) != ListType) or (len(emails) < 1): return []
     results = []
     res = []
@@ -88,4 +88,15 @@ if __name__ == '__main__':
     dbfiles['aliases']['db'].update(db)
     db.close()
 
-    print getusers(argv[1:], dbfiles)
+    postuser = None
+    try:
+        fd = open('/etc/imapd.conf', 'r')
+        for line in fd:
+            line = line.strip()
+            if line.startswith('postuser:'):
+                postuser = line.split(':', 1).pop().strip()
+                break
+    except:
+        print 'Error reading postuser from imapd.conf'
+
+    print getusers(argv[1:], dbfiles, postuser)
