@@ -270,7 +270,7 @@ class Backend(BackendBase):
         # Conversions
         nattach = len(data['m_attach'])
         mail_size = data['m_size']
-        subject = sql_quote(mime_decode_header(data['m_sub'])[:256])
+        subject = sql_quote(data['m_sub'][:256])
         mail_date = sql_quote(asctime(data['m_date']))
 
         try:
