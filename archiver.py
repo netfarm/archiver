@@ -112,6 +112,7 @@ class DEBUGServer:
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
 CHECKHEADERS = [ 'from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower() ]
 whitelist = []
+subjpattern = None
 input_classes  = { 'lmtp': LMTPServer, 'smtp': SMTPServer }
 output_classes = { 'lmtp': LMTP, 'smtp': SMTP, 'debug': DEBUGServer }
 
@@ -692,6 +693,12 @@ def StageHandler(config, stage_type):
                 if len(m_to) == 0:
                     return self.do_exit(552, 'Mail has not suitable To/Recipient')
 
+            ## Extraction of Subject field
+            m_sub = mime_decode_header(msg.get('Subject', ''))
+            if subjpattern is not None and m_sub.find(subjpattern):
+                LOG(E_INFO, 'Subject pattern matched, not archived')
+                return self.sendmail(sender, recips, self.remove_aid(data, msg))
+
             ## whitelist check: From, To and Sender (envelope)
             try:
                 check_sender = [parseaddr(sender)]
@@ -718,9 +725,6 @@ def StageHandler(config, stage_type):
                 m_cc = msg.getaddrlist('Cc')
             except:
                 return self.do_exit(443, 'Error parsing addrlist Cc: %s' % msg.get('Cc', None))
-
-            ## Extraction of Subject field
-            m_sub = msg.get('Subject', '')
 
             ## Date extraction
             m_date = None
@@ -1012,7 +1016,7 @@ def win32_startup():
 ## Start the Archiver Service
 def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     """ Archiver Service Main """
-    global LOG, main_svc, dbchecker, runas, whitelist, isRunning
+    global LOG, main_svc, dbchecker, runas, whitelist, subjpattern, isRunning
     main_svc = service_main
     if not access(configfile, F_OK | R_OK):
         print 'Cannot read configuration file', configfile
@@ -1054,6 +1058,12 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
     try:
         whitelist = config.get('global', 'whitelist').split(',')
         LOG(E_TRACE, '[Main] My whitelist is ' + ','.join(whitelist))
+    except:
+        pass
+
+    ## Subject pattern
+    try:
+        subjpattern = config.get('global', subjpattern)
     except:
         pass
 
