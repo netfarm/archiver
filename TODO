@@ -60,6 +60,7 @@ TODO 2.x:
 - [done] implement timed reload of quota hash depending on modified timestamp
          to avoid reloading each check
 - [done] complete backend_pgsql and use new sql for mail
+- [done] customizable subject pattern whitelist
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package
@@ -80,5 +81,5 @@ TODO 2.x:
 - why poll() keeps objects in list then calls handle_excpt???
 - remove duplicate code in backend_filesystem and backed_vfsimage
 
-- customizable subject pattern whitelist
 - option to skip spam tagged mail
+- remove removables globals
