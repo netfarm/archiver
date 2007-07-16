@@ -1063,7 +1063,7 @@ def ServiceStartup(configfile, user=None, debug=False, service_main=False):
 
     ## Subject pattern
     try:
-        subjpattern = config.get('global', subjpattern)
+        subjpattern = config.get('global', 'subjpattern')
     except:
         pass
 
