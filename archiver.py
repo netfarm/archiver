@@ -695,8 +695,8 @@ def StageHandler(config, stage_type):
 
             ## Extraction of Subject field
             m_sub = mime_decode_header(msg.get('Subject', ''))
-            if subjpattern is not None and m_sub.find(subjpattern):
-                LOG(E_INFO, 'Subject pattern matched, not archived')
+            if subjpattern is not None and m_sub.find(subjpattern) != -1:
+                LOG(E_INFO, '%s: Subject pattern matched, not archived' % self.type)
                 return self.sendmail(sender, recips, self.remove_aid(data, msg))
 
             ## whitelist check: From, To and Sender (envelope)
