@@ -61,10 +61,10 @@ update mail_log_in set
     mailfrom  = '%(mailfrom)s',
     mail_size = %(mail_size)d,
     nrcpts    = %(nrcpts)d
-where id in (select id 
-             from mail_log_in 
-             where ref = '%(ref)s' 
-             order by r_date desc 
+where id in (select id
+             from mail_log_in
+             where ref = '%(ref)s'
+             order by r_date desc
              limit 1);
 """
 
@@ -250,10 +250,10 @@ class PyLogAnalyzer:
                 res = handler(info.copy())
             except (KeyboardInterrupt, IOError):
                 break
-            except:
-                t, val, tb = exc_info()
-                self.log(E_ERR, 'Runtime Error: ' + str(val)) ## FIXME: add traceback
-                pass
+            #except:
+            #    t, val, tb = exc_info()
+            #    self.log(E_ERR, 'Runtime Error: ' + str(val)) ## FIXME: add traceback
+            #    pass
 
     ## Merge message_id and date and put them into the cache db
     def postfix_cleanup(self, info):
@@ -292,8 +292,10 @@ class PyLogAnalyzer:
         """ Picks mail_id from the record of postfix/cleanup and fills mail_log_out entry """
         if not info.has_key('to'): return False # no need
 
-        ## Skip 'connect to' - FIXME find a better way
-        if len(info['ref']) != 11: return False
+        ## Skip 'connect to' - FIXME find a better way postfix in etch 11, sarge 9
+        if (len(info['ref']) != 11) and (len(info['ref']) != 9): return False
+
+        info['dsn'] = info.get('dsn', '0.0.0') # postfix in sarge misses dsn in log
 
         ## Retrieve ref's mail_id
         mail_id = self.query(q_mail_id, info, fetch=True)
