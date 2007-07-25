@@ -133,7 +133,9 @@ def log(severity, text):
         logfd.flush()
 
 def sqlquote(text):
-    return text.replace("'", "\\'")
+    text = text.replace("\\", "\\\\")
+    text = text.replace("'", "\\'")
+    return text
 
 def quotedict(info):
     for key in info.keys():
