@@ -20,6 +20,7 @@
 ## Netfarm Mail Archiver [loganalyzer]
 
 from sys import exc_info, stdin
+from traceback import format_exc
 from types import StringType
 from rfc822 import parseaddr
 from mx.DateTime.Parser import DateTimeFromString
@@ -179,8 +180,10 @@ class PyLogAnalyzer:
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except:
-            ## TODO Traceback
-            log(E_ERR, 'DB Query Error')
+            log(E_ERR, '-----------\n[DB Query Error]')
+            log(E_ERR, format_exc().strip())
+            log(E_ERR, '\n[Query]\n' + qs)
+            log(E_ERR, '-----------')
             self.dbConn.rollback()
             return None
 
