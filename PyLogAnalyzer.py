@@ -268,6 +268,7 @@ class PyLogAnalyzer:
     def postfix_cleanup(self, info):
         """ Collects message_id and inserts the record with the placeholder """
         if info['msg'].startswith('reject:'): return True
+        if info['msg'].has_key('resent-message-id'): return True
         if not info.has_key('message-id'):
             self.log(E_ERR, 'postfix/cleanup got no message_id %s: %s' % (info['ref'],  info['msg']))
             return False
