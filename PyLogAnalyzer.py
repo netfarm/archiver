@@ -440,10 +440,17 @@ if __name__ == '__main__':
     from sys import argv, exit as sys_exit
     from signal import signal, SIGTERM
 
+    if '-l' in argv:
+        skiplist = []
+        argv.remove('-l')
+    else:
+        skiplist = defskiplist
+        
+
     if len(argv) != 2:
-        print 'Usage %s logfile|fifo' % argv[0]
+        print 'Usage %s [-l] logfile|fifo' % argv[0]
         sys_exit()
 
     signal(SIGTERM, sigtermHandler)
-    PyLog = PyLogAnalyzer(argv[1])
+    PyLog = PyLogAnalyzer(argv[1], skiplist)
     PyLog.mainLoop()
