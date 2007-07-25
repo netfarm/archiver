@@ -31,7 +31,7 @@ import re
 DBDSN = 'host=localhost dbname=mail user=archiver password=mail'
 
 re_line = re.compile(r'(\w+\s+\d+\s+\d+:\d+:\d+) (.*?) (.*?)\[(\d*?)\]: (.*)')
-re_msg  = re.compile(r'(\w+=.*?),')
+re_msg  = re.compile(r'(\w+=.*?), ')
 
 re_pstat = re.compile(r'(\w+) \((.*)\)')
 
@@ -178,7 +178,7 @@ class PyLogAnalyzer:
     def query(self, query, info, fetch=False):
         quotedict(info)
         qs = query % info
-
+        print qs
         try:
             self.dbCursor.execute(qs)
             self.dbConn.commit()
@@ -190,9 +190,12 @@ class PyLogAnalyzer:
             log(E_ERR, '\n[Query]\n' + qs)
             log(E_ERR, '-----------')
             self.dbConn.rollback()
-            return None
+            return False
 
-        if fetch: return self.dbCursor.fetchone()
+        if fetch:
+            return self.dbCursor.fetchone()
+        else:
+            return True
 
     def mainLoop(self):
         self.log(E_ALWAYS, '[PyLogAnalyzer] Starting...')
@@ -335,7 +338,7 @@ class PyLogAnalyzer:
 
         ## Parse mailto using rfc822 module
         try:
-            info['mailto'] = parseaddr(info['to'])[1]
+            info['mailto'] = parseaddr(info['to'])[1] # FIXME multiple recipients as in sendmail?
         except:
             log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
             return False
@@ -410,11 +413,17 @@ class PyLogAnalyzer:
             if info['relay'][-1] == '.': info['relay'] = info['relay'][:-1]
             if info['relay'] in self.skiplist: return True
 
-            ## Parse mailto using rfc822 module
-            try:
-                info['mailto'] = parseaddr(info['to'])[1]
-            except:
-                log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
+            recipients = info['to'].split(',')
+
+            info['recipients'] = []
+            for recipient in recipients:
+                try:
+                    info['recipients'].append(parseaddr(recipient)[1])
+                except:
+                    log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
+
+            if len(info['recipients']) == 0:
+                log(E_ERR, 'No recipients collected - skipping')
                 return False
 
             ## Parse delay
@@ -435,7 +444,11 @@ class PyLogAnalyzer:
             except:
                 info['delay'] = 0
 
-            return self.query(q_out, info)
+            res = True
+            for recipient in info['recipients']:
+                info['mailto'] = recipient
+                res = res and self.query(q_out, info)
+            return res
         else:
             pass # ignored
 
