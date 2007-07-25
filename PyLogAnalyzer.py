@@ -33,7 +33,7 @@ re_msg  = re.compile(r'(\w+=.*?),')
 
 re_pstat = re.compile(r'(\w+) \((.*)\)')
 
-defskiplist = [ 'none', '127.0.0.1', 'localhost' ]
+defskiplist = [ '127.0.0.1', 'localhost' ]
 
 E_ALWAYS = 0
 E_INFO   = 1
@@ -66,6 +66,13 @@ where id in (select id
              where ref = '%(ref)s'
              order by r_date desc
              limit 1);
+"""
+
+q_postfix_del = """
+delete from mail_log_in
+where id
+in (select id from mail_log_in where ref = '%(ref)s'
+    order by id desc limit 1);
 """
 
 q_sendmail_in = """
@@ -169,6 +176,8 @@ class PyLogAnalyzer:
         try:
             self.dbCursor.execute(qs)
             self.dbConn.commit()
+        except KeyboardInterrupt:
+            raise KeyboardInterrupt
         except:
             ## TODO Traceback
             log(E_ERR, 'DB Query Error')
@@ -308,7 +317,8 @@ class PyLogAnalyzer:
         else:
             info['relay'] = 'none'
 
-        if info['relay'] in self.skiplist: return True
+        if info['relay'] in self.skiplist:
+            return self.query(q_postfix_del, info)
 
         try:
             info['delay'] = long(info['delay'])
@@ -330,6 +340,8 @@ class PyLogAnalyzer:
             info['status'], info['status_desc'] = 'unknown', info['status']
 
         return self.query(q_out, info)
+
+    postfix_lmtp = postfix_smtp
 
     def sendmail_sendmail(self, info):
         """ Collects two stages of sendmail log """
