@@ -255,11 +255,12 @@ class PyLogAnalyzer:
             #    self.log(E_ERR, 'Runtime Error: ' + str(val)) ## FIXME: add traceback
             #    pass
 
-    ## Merge message_id and date and put them into the cache db
+    ## Gather message_id and put the entry in the database
     def postfix_cleanup(self, info):
         """ Collects message_id and inserts the record with the placeholder """
+        if info['msg'].startswith('reject:'): return True
         if not info.has_key('message-id'):
-            self.log(E_ERR, 'postfix/cleanup got no message_id ' + info['msg'])
+            self.log(E_ERR, 'postfix/cleanup got no message_id %s: %s' % (info['ref'],  info['msg']))
             return False
         info['message_id'] = info['message-id']
         return self.query(q_postfix_msgid, info)
