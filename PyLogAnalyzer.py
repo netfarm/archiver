@@ -19,7 +19,8 @@
 ## @file PyLogAnalyzer.py
 ## Netfarm Mail Archiver [loganalyzer]
 
-from sys import stdin
+from sys import stdin, stdout
+from os import chdir, fork
 from traceback import format_exc
 from types import StringType
 from rfc822 import parseaddr
@@ -42,8 +43,9 @@ E_WARN   = 2
 E_ERR    = 3
 E_TRACE  = 4
 
-loglevel = E_ERR
+global logfd
 
+loglevel = E_ERR
 ### Queries
 
 q_postfix_msgid = """
@@ -127,7 +129,8 @@ PyLog = None
 
 def log(severity, text):
     if severity <= loglevel:
-        print text
+        logfd.write(text + '\n')
+        logfd.flush()
 
 def sqlquote(text):
     return text.replace("'", "\\'")
@@ -190,6 +193,7 @@ class PyLogAnalyzer:
         if fetch: return self.dbCursor.fetchone()
 
     def mainLoop(self):
+        self.log(E_ALWAYS, '[PyLogAnalyzer] Starting...')
         while 1:
             try:
                 ## Read a line
@@ -438,6 +442,7 @@ def sigtermHandler(signum, frame):
     log(E_ALWAYS, 'SiGTERM received')
 
 if __name__ == '__main__':
+    global logfd
     from sys import argv, exit as sys_exit
     from signal import signal, SIGTERM
 
@@ -446,12 +451,28 @@ if __name__ == '__main__':
         argv.remove('-l')
     else:
         skiplist = defskiplist
-        
 
+    if '-d' in argv:
+        daemonize = True
+        logfd = open('/var/log/pylog.log', 'a')
+        argv.remove('-d')
+    else:
+        logfd = stdout
+        daemonize = False
+        
     if len(argv) != 2:
-        print 'Usage %s [-l] logfile|fifo' % argv[0]
+        print 'Usage %s [-d] [-l] logfile|fifo' % argv[0]
+        sys_exit()
+
+    if daemonize and (argv[0] == '-'):
+        print '%s incompatible options -d with stdin'
         sys_exit()
 
     signal(SIGTERM, sigtermHandler)
+    if daemonize:
+        pid = fork()
+        if pid: sys_exit(0)
+        chdir('/')
+
     PyLog = PyLogAnalyzer(argv[1], skiplist)
     PyLog.mainLoop()
