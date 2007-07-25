@@ -474,7 +474,7 @@ if __name__ == '__main__':
     else:
         logfd = stdout
         daemonize = False
-        
+
     if len(argv) != 2:
         print 'Usage %s [-d] [-l] logfile|fifo' % argv[0]
         sys_exit()
