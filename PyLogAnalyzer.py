@@ -248,7 +248,7 @@ class PyLogAnalyzer:
                             subprocess=subprocess)
 
                 ## Parse/split all values
-                data = {}
+                data = { 'dsn': '0.0.0' } # postfix and some lines on sendmail
                 parts = re_msg.split(msg)
                 if len(parts) == 0: continue
                 for part in parts:
@@ -308,8 +308,6 @@ class PyLogAnalyzer:
 
         ## Skip 'connect to' - FIXME find a better way postfix in etch 11, sarge 9
         if (len(info['ref']) != 11) and (len(info['ref']) != 9): return False
-
-        info['dsn'] = info.get('dsn', '0.0.0') # postfix in sarge misses dsn in log
 
         ## Retrieve ref's mail_id
         mail_id = self.query(q_mail_id, info, fetch=True)
