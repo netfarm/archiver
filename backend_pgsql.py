@@ -254,7 +254,7 @@ class Backend(BackendBase):
                 dlog = recipient[1]
                 ddom = recipient[1]
 
-            result.append({'to_login': sql_quote(dlog), 'to_domain': sql_quote(ddom) })
+            result.append({'to_login': sql_quote(dlog[:512]), 'to_domain': sql_quote(ddom[:512]) })
         return result
 
     def process_archive(self, data):
@@ -272,23 +272,24 @@ class Backend(BackendBase):
         quote_dict(data)
         nattach = len(data['m_attach'])
         mail_size = data['m_size']
-        subject = data['m_sub'][:256]
+        subject = data['m_sub'][:512]
         mail_date = asctime(data['m_date'])
+        mid = data['m_mid'][:512]
 
         try:
             slog, sdom = data['m_from'][1].split('@')
-            slog = slog.strip()
-            sdom = sdom.strip()
+            slog = sql_quote(slog.strip()[:512])
+            sdom = sql_quote(sdom.strip()[:512])
         except:
             return 0, 443, 'Error splitting From address'
 
-        values = { 'message_id':data['m_mid'][:512],
-                   'from_login': slog[:32],
-                   'from_domain': sdom[:256],
-                   'subject': subject[:256],
-                   'mail_date': mail_date,
-                   'mail_size': mail_size,
-                   'attachment': nattach }
+        values = { 'message_id' : mid,
+                   'from_login' : slog,
+                   'from_domain': sdom,
+                   'subject'    : subject,
+                   'mail_date'  : mail_date,
+                   'mail_size'  : mail_size,
+                   'attachment' : nattach }
 
         addrs = data['m_to'] + data['m_cc']
         recipients = self.parse_recipients(addrs)
@@ -299,7 +300,7 @@ class Backend(BackendBase):
             qs = qs + recipient_template % recipient
 
         for mailbox in data['m_mboxes']:
-            qs = qs + authorized_template % mailbox
+            qs = qs + authorized_template % mailbox[:512]
 
         qs = qs + 'SELECT year, pid from mail_pid;'
 
