@@ -19,6 +19,10 @@
 ## @file PyLogAnalyzer.py
 ## Netfarm Mail Archiver [loganalyzer]
 
+## TODO
+## - handle db disconnection
+## - close fd when damonize
+
 from sys import stdin, stdout
 from os import chdir, fork
 from traceback import format_exc
