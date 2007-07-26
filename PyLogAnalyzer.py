@@ -178,7 +178,7 @@ class PyLogAnalyzer:
     def query(self, query, info, fetch=False):
         quotedict(info)
         qs = query % info
-        print qs
+
         try:
             self.dbCursor.execute(qs)
             self.dbConn.commit()
