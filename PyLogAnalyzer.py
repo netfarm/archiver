@@ -247,7 +247,7 @@ class PyLogAnalyzer:
                     continue
 
                 ## Pick the needed parse method
-                hname = '_'.join([process, subprocess])
+                hname = '_'.join([process, subprocess]).replace('-', '_')
                 handler = getattr(self, hname, None)
                 if handler is None: continue
 
@@ -456,6 +456,7 @@ class PyLogAnalyzer:
         else:
             pass # ignored
 
+    sm_mta_sm_mta = sendmail_sendmail
 
 def sigtermHandler(signum, frame):
     log(E_ALWAYS, 'SiGTERM received')
