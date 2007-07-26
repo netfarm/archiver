@@ -26,6 +26,7 @@ __all__ = [ 'Backend' ]
 from archiver import *
 from sys import exc_info
 from time import asctime
+from types import StringType
 from base64 import encodestring
 from psycopg2 import connect as db_connect
 
@@ -91,21 +92,21 @@ INSERT INTO mail_storage (
 """
 
 ##
-def sql_quote(v):
+def sql_quote(text):
     """sql_quote
 
     quotes special chars and removes NULL chars
-    @param v: is the text that should be quoted
+    @param text: is the text that should be quoted
     @return: quoted string"""
-    quote_list = [ '\'', '"', '\\' ]
-    res = ''
-    # Remove NULL - very bad emails
-    v = v.replace('\x00', '')
-    for i in range(len(v)):
-        if v[i] in quote_list:
-            res = res + '\\'
-        res = res + v[i]
-    return res
+    text = text.replace('\x00', '')
+    text = text.replace("\\", "\\\\")
+    text = text.replace("'", "\\'")
+    return text
+
+def quote_dict(info):
+    for key in info.keys():
+        if type(info[key]) == StringType:
+            info[key] = sql_quote(info[key])
 
 def format_msg(msg):
     """Formats an error message from pgsql backend
@@ -268,10 +269,11 @@ class Backend(BackendBase):
             return 0, 443, 'Integrity error missing From/To/Cc'
 
         # Conversions
+        quote_dict(data)
         nattach = len(data['m_attach'])
         mail_size = data['m_size']
-        subject = sql_quote(data['m_sub'][:256])
-        mail_date = sql_quote(asctime(data['m_date']))
+        subject = data['m_sub'][:256]
+        mail_date = asctime(data['m_date'])
 
         try:
             slog, sdom = data['m_from'][1].split('@')
@@ -280,10 +282,10 @@ class Backend(BackendBase):
         except:
             return 0, 443, 'Error splitting From address'
 
-        values = { 'message_id': sql_quote(data['m_mid'][:512]),
-                   'from_login': sql_quote(slog[:32]),
-                   'from_domain': sql_quote(sdom[:256]),
-                   'subject': sql_quote(subject[:256]),
+        values = { 'message_id':data['m_mid'][:512],
+                   'from_login': slog[:32],
+                   'from_domain': sdom[:256],
+                   'subject': subject[:256],
                    'mail_date': mail_date,
                    'mail_size': mail_size,
                    'attachment': nattach }
