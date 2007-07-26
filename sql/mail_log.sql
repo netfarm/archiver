@@ -3,7 +3,7 @@ drop table mail_log_in;
 
 create table mail_log_in (
     id serial primary key,
-    mailfrom varchar(256),
+    mailfrom varchar(512),
     message_id varchar(512) not null,
     r_date timestamp not null,
     mail_size integer not null default 0,
@@ -19,11 +19,11 @@ create table mail_log_out (
     mail_id integer not null references mail_log_in(id),
     d_date timestamp not null,
     dsn varchar(16) not null,
-    relay varchar(256) not null,
+    relay varchar(512) not null,
     delay numeric not null default 0,
     status varchar(64) not null default 'unknown',
     status_desc text not null default '',
-    mailto varchar(256)
+    mailto varchar(512)
 );
 
 create index idx_mail_log_out_mail_id on mail_log_out using btree (mail_id);
