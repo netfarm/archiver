@@ -254,7 +254,7 @@ class Backend(BackendBase):
                 dlog = recipient[1]
                 ddom = recipient[1]
 
-            result.append({'to_login': dlog, 'to_domain': ddom })
+            result.append({'to_login': sql_quote(dlog), 'to_domain': sql_quote(ddom) })
         return result
 
     def process_archive(self, data):
