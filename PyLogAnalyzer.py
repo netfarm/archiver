@@ -480,8 +480,12 @@ if __name__ == '__main__':
         logfd = stdout
         daemonize = False
 
+    if '-ng' in argv:
+        logfd = open('/var/log/pylog.log', 'a')
+        argv.remove('-ng')
+
     if len(argv) != 2:
-        print 'Usage %s [-d] [-l] logfile|fifo' % argv[0]
+        print 'Usage %s [-d] [-ng] [-l] logfile|fifo' % argv[0]
         sys_exit()
 
     if daemonize and (argv[0] == '-'):
