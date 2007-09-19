@@ -459,7 +459,7 @@ class PyLogAnalyzer:
                 res = res and self.query(q_out, info)
             return res
         else:
-            pass # ignored
+            return True # ignored
 
     sm_mta_sm_mta = sendmail_sendmail
 
