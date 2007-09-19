@@ -170,14 +170,14 @@ class PyLogAnalyzer:
             self.dbCursor.close()
             self.dbConn.close()
         except:
-            self.log(E_ALWAYS, 'Error closing connection to DB')
+            pass
 
         try:
             self.fd.close()
         except:
-            self.log(E_ALWAYS, 'Error closing logfile fd')
+            pass
 
-        self.log(E_ALWAYS, 'Job Done')
+        self.log(E_TRACE, 'Exit')
 
     def query(self, query, info, fetch=False):
         quotedict(info)
@@ -193,7 +193,10 @@ class PyLogAnalyzer:
             log(E_ERR, format_exc().strip())
             log(E_ERR, '\n[Query]\n' + qs)
             log(E_ERR, '-----------')
-            self.dbConn.rollback()
+            try:
+                self.dbConn.rollback()
+            except:
+                pass
             return False
 
         if fetch:
@@ -272,7 +275,9 @@ class PyLogAnalyzer:
 
                 info.update(data)
 
-                res = handler(info.copy())
+                if not handler(info.copy()):
+                    log(E_ERR, 'Query Failed - Force Respawn (syslog-ng)')
+                    break
             except (KeyboardInterrupt, IOError):
                 break
             except:
@@ -287,7 +292,7 @@ class PyLogAnalyzer:
         if info.has_key('resent-message-id'): return True
         if not info.has_key('message-id'):
             self.log(E_ERR, 'postfix/cleanup got no message_id %s: %s' % (info['ref'],  info['msg']))
-            return False
+            return True
         info['message_id'] = info['message-id']
         return self.query(q_postfix_msgid, info)
 
@@ -311,20 +316,20 @@ class PyLogAnalyzer:
             info['mailfrom'] = parseaddr(info['from'])[1]
         except:
             log(E_ERR, 'Error while parsing mailfrom address, ' + info['from'])
-            return False
+            return True
 
         return self.query(q_postfix_update, info)
 
     def postfix_smtp(self, info):
         """ Picks mail_id from the record of postfix/cleanup and fills mail_log_out entry """
-        if not info.has_key('to'): return False # no need
+        if not info.has_key('to'): return True # no need
 
         ## Skip 'connect to' - FIXME find a better way postfix in etch 11, sarge 9
-        if (len(info['ref']) != 11) and (len(info['ref']) != 9): return False
+        if (len(info['ref']) != 11) and (len(info['ref']) != 9): return True
 
         ## Retrieve ref's mail_id
         mail_id = self.query(q_mail_id, info, fetch=True)
-        if mail_id is None: return False
+        if mail_id is None: return True
         info['mail_id'] = mail_id[0]
 
         if info.has_key('relay'):
@@ -345,7 +350,7 @@ class PyLogAnalyzer:
             info['mailto'] = parseaddr(info['to'])[1] # FIXME multiple recipients as in sendmail?
         except:
             log(E_ERR, 'Error while parsing mailto address, ' + info['to'])
-            return False
+            return True
 
         ## Parse status
         res = re_pstat.match(info['status'])
@@ -369,7 +374,7 @@ class PyLogAnalyzer:
                 info['mailfrom'] = parseaddr(info['from'])[1]
             except:
                 log(E_ERR, 'Error while parsing mailfrom address, ' + info['from'])
-                return False
+                return True
 
             try:
                 info['mail_size'] = long(info['size'])
@@ -390,7 +395,7 @@ class PyLogAnalyzer:
 
             ## First check if we have a corresponding mail_id
             mail_id = self.query(q_mail_id, info, fetch=True)
-            if mail_id is None: return False
+            if mail_id is None: return True
             info['mail_id'] = mail_id[0]
 
             ## Sendmail messages are not easy to parse
@@ -428,7 +433,7 @@ class PyLogAnalyzer:
 
             if len(info['recipients']) == 0:
                 log(E_ERR, 'No recipients collected - skipping')
-                return False
+                return True
 
             ## Parse delay
             try:
@@ -498,5 +503,10 @@ if __name__ == '__main__':
         if pid: sys_exit(0)
         chdir('/')
 
-    PyLog = PyLogAnalyzer(argv[1], skiplist)
-    PyLog.mainLoop()
+    try:
+        PyLog = PyLogAnalyzer(argv[1], skiplist)
+        PyLog.mainLoop()
+    except:
+        log(E_ERR, '-----------\n[Startup Error]')
+        log(E_ERR, format_exc().strip())
+        log(E_ERR, '-----------')
