@@ -5,7 +5,7 @@ from lmtp import getaddr
 
 email = argv[1]
 if email[0]!='<':
-	email = '<'+email+'>'
+    email = '<'+email+'>'
 
 e = 'FROM: ' + email
 

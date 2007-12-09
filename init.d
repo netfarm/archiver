@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-#		Written by Gianluigi Tiesi <sherpya@netfarm.it>
+# Written by Gianluigi Tiesi <sherpya@netfarm.it>
 #
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
@@ -16,24 +16,24 @@ test -f $DAEMON || exit 0
 set -e
 
 case "$1" in
-  start)
-	echo -n "Starting $DESC: "
-	start-stop-daemon --start --exec $DAEMON -- -u $RUNAS
-	echo "$NAME."
-	;;
-  stop)
-	echo -n "Stopping $DESC: "
-	start-stop-daemon --retry $TIMEOUT --pidfile $PIDFILE --stop
-	echo "$NAME."
-	;;
-  restart|force-reload)
-	$0 stop && sleep 5 && $0 start
-	;;
-  *)
-	N=/etc/init.d/$NAME
-	echo "Usage: $N {start|stop|restart|force-reload}" >&2
-	exit 1
-	;;
+    start)
+        echo -n "Starting $DESC: "
+        start-stop-daemon --start --exec $DAEMON -- -u $RUNAS
+        echo "$NAME."
+     ;;
+    stop)
+        echo -n "Stopping $DESC: "
+        start-stop-daemon --retry $TIMEOUT --pidfile $PIDFILE --stop
+        echo "$NAME."
+    ;;
+    restart|force-reload)
+        $0 stop && sleep 5 && $0 start
+    ;;
+    *)
+        N=/etc/init.d/$NAME
+        echo "Usage: $N {start|stop|restart|force-reload}" >&2
+        exit 1
+    ;;
 esac
 
 exit 0
