@@ -9,7 +9,7 @@ Netfarm Mail Archiver - Structure for version 2.0
                     +---------+----------+                   +---------+----------+
                     |      Archive       |                   |       Storage      |
                     +---------+----------+                   +---------+----------+
-                              |                                        | 
+                              |                                        |
                               |                                        |
                     +---------+----------+                   +---------+----------+
                     |  Archive Backend   |                   |  Storage Backend   |

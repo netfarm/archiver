@@ -12,4 +12,4 @@ e = 'FROM: ' + email
 res = getaddr('FROM:', e)
 
 print "Checking: %s - results: [%s] [%s]" % (email, res[0], res[1])
- 
+

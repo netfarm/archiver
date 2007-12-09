@@ -3,7 +3,7 @@ PYTHON_VERSION=$(shell python -c 'import sys ; print sys.version[:3]')
 
 DIST=archiver-$(VERSION).tar.gz
 SUBDIRS=sql postfix
-CONTRIB=$(wildcard sql/*.sql) $(wildcard postfix/*.cf) 
+CONTRIB=$(wildcard sql/*.sql) $(wildcard postfix/*.cf)
 BACKENDS=$(wildcard backend_*.py)
 MODULES=$(BACKENDS) archiver.py PyLogAnalyzer.py archiver_svc.py lmtp.py compress.py mblookup.py
 
@@ -18,7 +18,7 @@ DISTDIR=dist/archiver-$(VERSION)
 all: $(DIST)
 
 compile:
-	python /usr/lib/python$(PYTHON_VERSION)/compileall.py .	
+	python /usr/lib/python$(PYTHON_VERSION)/compileall.py .
 clean:
 	rm -f *~ *.pyc *.pyo *.flc *.bak $(DIST) dist
 
