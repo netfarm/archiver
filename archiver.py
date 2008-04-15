@@ -429,7 +429,10 @@ def StageHandler(config, stage_type):
         def del_hook(self):
             """hook called when a connection is terminated"""
             LOG(E_TRACE, '%s: Connection closed: Releasing lock' % self.type)
-            self.lock.release()
+            try:
+                self.lock.release()
+            except:
+                pass
 
         def finish(self, force=True):
             """shutdown the Archiver system waiting for unterminated jobs"""
