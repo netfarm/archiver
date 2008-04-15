@@ -274,13 +274,11 @@ class MTPChannel(async_chat):
         else:
             self.push('250 2.0.0 Ok')
 
-    def impl_QUIT(self, arg):
-        del arg
+    def impl_QUIT(self, dummy):
         self.push('221 2.0.0 Bye')
         self.close_when_done()
 
-    def impl_RSET(self, arg):
-        del arg
+    def impl_RSET(self, dummy):
         self.__line = []
         self.__state = self.COMMAND
         self.__mailfrom = None
@@ -328,7 +326,7 @@ class MTPChannel(async_chat):
 
 class MTPServer(dispatcher):
     """MTPServer dispatcher class implemented as asyncore dispatcher"""
-    def __init__(self, localaddr, del_hook = None, timeout = None):
+    def __init__(self, localaddr, del_hook=None, timeout=None):
         """The Constructor
 
         Creates the listening socket"""
