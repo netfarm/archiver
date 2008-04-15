@@ -22,13 +22,6 @@ Done, but impossible Backend instance should always have attribute 'connection'
 since it's an instance attribute
 
 <--
-Exception exceptions.AssertionError: <exceptions.AssertionError instance at 0x40260a4c>
- in <bound method StageHandler.del_hook of <StageHandler(archive, stopped)>> ignored
--->
-No clue :(
-Raised when not carefully waiting threads
-
-<--
 error: uncaptured python exception, closing channel <lmtp.SMTPChannel connected 127.0.0.1:52486 at 0xb7c3452c>
  (socket.error:(9, 'Bad file descriptor')
 [/usr/lib/python2.3/asynchat.py|initiate_send|218] [/usr/lib/python2.3/asyncore.py|send|337])
