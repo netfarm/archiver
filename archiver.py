@@ -39,7 +39,7 @@ if platform != 'win32':
     from stat import ST_MTIME
     from os import stat, fork, kill, seteuid, setegid, getuid, chdir
     from pwd import getpwnam, getpwuid
-from lmtp import LMTPServer, SMTPServer, LMTP, SMTP
+from mtplib import MTPServer
 from time import strftime, time, localtime, sleep, mktime
 from sys import argv, exc_info, stdin, stdout, stderr
 from sys import exit as sys_exit
@@ -49,7 +49,7 @@ from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
 from rfc822 import parseaddr
-from smtplib import SMTP
+from smtplib import SMTP, SMTPRecipientsRefused, SMTPSenderRefused
 from ConfigParser import ConfigParser
 from mimify import mime_decode
 from base64 import decodestring
@@ -57,6 +57,7 @@ from threading import Thread, Lock, RLock, Event
 from cStringIO import StringIO
 from getopt import getopt
 from types import IntType, DictType, StringType
+from random import randint
 
 import re
 
@@ -94,27 +95,12 @@ serverPoll = []
 runas      = None
 ##
 
-class DEBUGServer:
-    """Debug Server used only for debugging connections"""
-    def __init__(self, address, port):
-        """DEBUGServer Constructor"""
-        print 'DEBUGServer: output %s:%s' % (address, port)
-
-    def sendmail(self, m_from, m_to, msg):
-        """DEBUGServer fake sendmail"""
-        print 'DEBUGServer: sendmail from: %s to %s - size %d' % (m_from, m_to, len(msg))
-        return ''
-
-    def close(self):
-        """DEBUGServer dummy close"""
-        pass
-
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
 CHECKHEADERS = [ 'from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower() ]
 whitelist = []
 subjpattern = None
-input_classes  = { 'lmtp': LMTPServer, 'smtp': SMTPServer }
-output_classes = { 'lmtp': LMTP, 'smtp': SMTP, 'debug': DEBUGServer }
+input_classes  = { 'smtp': MTPServer }
+output_classes = { 'smtp': SMTP }
 
 class StorageTypeNotSupported(Exception):
     """StorageTypeNotSupported The storage type is not supported"""
@@ -335,7 +321,7 @@ def StageHandler(config, stage_type):
                 timeout = None
 
             Thread.__init__(self)
-            ## Init LMTPServer Class
+            ## Init MTPServer Class
             Class.__init__(self, self.address, self.del_hook, timeout=timeout)
             self.lock = RLock()
             self.type = stage_type
@@ -442,7 +428,14 @@ def StageHandler(config, stage_type):
                 LOG(E_TRACE, '%s: Done' % self.getName())
             self.close_all()
 
-        def sendmail(self, m_from, m_to, msg, aid=None, mid=None):
+        ## low entropy message id generator
+        def new_mid(self):
+            m = ''
+            for i in range(5):
+                m = m + chr(randint(0, 255))
+            return '@'.join([m, self.address])
+            
+        def sendmail(self, m_from, m_opts, m_to, m_rcptopts, msg, aid=None, mid=None):
             """Rerouting of mails to nexthop (postfix)"""
             if msg is None: # E.g. regex has failed
                 LOG(E_ERR, '%s-sendmail: msg is None something went wrong ;(' % self.type)
@@ -460,64 +453,43 @@ def StageHandler(config, stage_type):
             if m_from == '':
                 m_from = '<>'
 
-            server_reply = {}
+            rcpt_options = []
 
-            ## Here python developers was very funny, if a mail is not delivered to one of recipients
-            ## then I have bad recipient list in the return value
-            ## If the recipient is only one and mail is not delivered
-            ## (maybe also if many recipients are bad recipients)
-            ## bad recipient list is in traceback, really funny ;)
+            ## Fake rcpt options for NOTIFY passthrough
+            if len(m_rcptopts) > 0:
+                option = m_rcptopts[0][1].upper()
+                if option.find('NOTIFY') != -1:
+                    rcpt_options = ['NOTIFY' + option.split('NOTIFY', 1).pop()]
+
+            ## Mail options is disabled for now
             try:
-                server_reply = server.sendmail(m_from, m_to, msg)
-            except:
-                t, server_reply, tb = exc_info()
-                server_reply = server_reply[0]
-
-            try:
-                server.close()
-            except: pass
-
-            ## We can get a dict or an integer
-            if type(server_reply) == IntType:
-                server_reply = str(server_reply)
-
-            if len(server_reply) == 0:
-                okmsg = 'Sendmail Ok'
-                if aid:
-                    okmsg = 'Archived as: ' + aid
-
-                if mid is not None and self.hashdb.has_key(mid):
-                    LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
-                    try:
-                        del self.hashdb[mid]
-                        self.hashdb.sync()
-                    except:
-                        pass
-
-                return self.do_exit(250, okmsg, 200)
-            else:
-                if type(server_reply) == DictType:
-                    for rcpt in server_reply.keys():
-                        res = server_reply[rcpt]
-                        LOG(E_ERR, '%s-sendmail error: %s - %s' % (self.type, res[0], res[1]))
-                elif type(server_reply) == StringType:
-                    LOG(E_ERR, '%s-sendmail reply error, server returned error code %s' % (self.type, server_reply))
-                    return self.do_exit(443, 'Server returned code ' + server_reply)
-                else:
-                    LOG(E_ERR, '%s-sendmail unknown error: %s' % (self.type, str(server_reply)))
-                    return self.do_exit(443, 'Internal server error')
-
-                ## FIXME - find the right way
-                if len(server_reply) == len(m_to):
-                    return self.do_exit(443, 'All recipients were rejected by the mailserver')
-
-                LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
                 try:
-                    del self.hashdb[mid]
-                    self.hashdb.sync()
+                    server_reply = server.sendmail(m_from, m_to, msg, mail_options=[], rcpt_options=rcpt_options)
+                except (SMTPRecipientsRefused, SMTPSenderRefused):
+                    LOG(E_ERR, '%s-sendmail: Server refused sender or recipients' % (self.type))
+                    return self.do_exit(550, 'Server refused sender or recipients')
                 except:
-                    pass
-                return self.do_exit(200, 'Some of recipients were rejected by the mailserver')
+                    t, v, tb = exc_info()
+                    LOG(E_ERR, '%s-sendmail: sent failed: %s: %s' % (self.type, t, v))
+                    return self.do_exit(443, 'Delivery failed to next hop')
+                else:
+                    okmsg = 'Sendmail Ok'
+                    if aid: okmsg = 'Archived as: ' + str(aid)
+                    if server_reply != {}:
+                        LOG(E_ERR, '%s-sendmail: ok but not all recipients where accepted %s' % (self.type, server_reply))
+
+                    if mid is not None and self.hashdb.has_key(mid):
+                        LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
+                        try:
+                            del self.hashdb[mid]
+                            self.hashdb.sync()
+                        except:
+                            pass
+                    return self.do_exit(250, okmsg, 200)
+            finally:
+                try:
+                    server.close()
+                except: pass
 
         def do_exit(self, code, msg='', extcode=None):
             """Exit function
@@ -529,7 +501,7 @@ def StageHandler(config, stage_type):
             excode = '.'.join([x for x in str(extcode)])
             return ' '.join([str(code), excode, msg])
 
-        def process_storage(self, peer, sender, recips, data):
+        def process_storage(self, peer, sender, mail_options, recips, rcptopts, data):
             """Stores the archived email using a Backend"""
             size = len(data)
             if size < MINSIZE:
@@ -543,12 +515,12 @@ def StageHandler(config, stage_type):
             aid = msg.get(AID, None)
 
             ## Check if I have msgid in my cache
-            mid = msg.get('message-id', '')
+            mid = msg.get('message-id', self.new_mid())
             LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
             if self.hashdb.has_key(mid):
                 aid = self.hashdb[mid]
                 LOG(E_ERR, '%s: Message already processed' % self.type)
-                return self.sendmail(sender, recips, data, aid, mid)
+                return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, mid)
 
             ## Date extraction
             m_date = None
@@ -593,7 +565,7 @@ def StageHandler(config, stage_type):
                 LOG(E_TRACE, '%s: X-Archiver-ID header not found in mail [whitelist]' % self.type)
             ## Next hop
             LOG(E_TRACE, '%s: passing data to nexthop: %s:%s' % (self.type, self.output_address, self.output_port))
-            return self.sendmail(sender, recips, data, aid, mid)
+            return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, mid)
 
         def add_aid(self, data, msg, aid):
             archiverid = '%s: %s' % (AID, aid)
@@ -627,7 +599,8 @@ def StageHandler(config, stage_type):
                     LOG(E_ERR, '%s: Error removing X-Archiver-ID header: %s' % (self.type, str(val)))
             return data
 
-        def process_archive(self, peer, sender, recips, data):
+        def process_archive(self, peer, sender, mail_options, recips, rcptopts, data):
+                
             """Archives email meta data using a Backend"""
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
@@ -643,15 +616,15 @@ def StageHandler(config, stage_type):
 
             if sender == '':
                 LOG(E_INFO, '%s: Null return path mail, not archived' % (self.type))
-                return self.sendmail('<>', recips, self.remove_aid(data, msg))
+                return self.sendmail('<>', mail_options, recips, rcptopts, data, aid, mid)
 
             ## Check if I have msgid in my cache
-            mid = msg.get('message-id', None)
-            if mid is not None and self.hashdb.has_key(mid):
+            mid = msg.get('message-id', self.new_mid())
+            if self.hashdb.has_key(mid):
                 LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
                 aid = self.hashdb[mid]
                 LOG(E_TRACE, '%s: Message already has year/pid pair, only adding header' % self.type)
-                return self.sendmail(sender, recips, self.add_aid(data, msg, aid), aid, mid)
+                return self.sendmail(sender, mail_options, recips, rcptopts, self.add_aid(data, msg, aid), aid, mid)
 
             ## Check for duplicate header
             dupe = dupe_check(msg.headers)
@@ -700,7 +673,7 @@ def StageHandler(config, stage_type):
             m_sub = mime_decode_header(msg.get('Subject', ''))
             if subjpattern is not None and m_sub.find(subjpattern) != -1:
                 LOG(E_INFO, '%s: Subject pattern matched, not archived' % self.type)
-                return self.sendmail(sender, recips, self.remove_aid(data, msg))
+                return self.sendmail(sender, mail_options, recips, rcptopts, self.remove_aid(data, msg))
 
             ## whitelist check: From, To and Sender (envelope)
             try:
@@ -717,7 +690,7 @@ def StageHandler(config, stage_type):
                 LOG(E_TRACE, 'whitelist check: %s' % base)
                 if base in whitelist:
                     LOG(E_INFO, '%s: Mail to: %s in whitelist, not archived' % (self.type, base))
-                    return self.sendmail(sender, recips, self.remove_aid(data, msg))
+                    return self.sendmail(sender, mail_options, recips, rcptopts, self.remove_aid(data, msg))
 
             ## Sender size limit check - in kb
             if dbchecker is not None and dbchecker.quota_check(m_from[1], size >> 10):
@@ -794,7 +767,7 @@ def StageHandler(config, stage_type):
             ## Next hop
             LOG(E_TRACE, '%s: backend worked fine' % self.type)
             LOG(E_TRACE, '%s: passing data to nexthop: %s:%s' % (self.type, self.output_address, self.output_port))
-            return self.sendmail(sender, recips, data, aid, mid)
+            return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, mid)
 ##### Class Wrapper - End
     return apply(StageHandler, (input_classes[input_class], config, stage_type))
 
