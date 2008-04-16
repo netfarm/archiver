@@ -10,7 +10,6 @@ MODULES=$(BACKENDS) archiver.py PyLogAnalyzer.py archiver_svc.py mtplib.py compr
 CONFS=archiver.conf archiver-win32.ini .pycheckrc
 TOOLS=setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
 DOCS=copyright.txt TODO structure.txt
-TESTFILES=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
 
 ALL=Makefile $(MODULES) $(DOCS) $(TOOLS) $(CONFS) $(CONTRIB)
 DISTDIR=dist/archiver-$(VERSION)
@@ -28,7 +27,7 @@ cleandoc:
 distclean: clean cleandoc
 
 pycheck:
-	pychecker backend_*.py archiver.py lmtp.py || true
+	pychecker backend_*.py archiver.py mtplib.py || true
 
 epydoc-html:
 	@echo Creating html Documentation
@@ -54,7 +53,7 @@ $(DIST): $(ALL)
 	@mkdir -p $(DISTDIR)
 	@for dir in $(SUBDIRS); do echo Creating $(DISTDIR)/$$dir ; install -m755 -d $(DISTDIR)/$$dir; done
 	@for file in $(ALL); do echo Installing $(DISTDIR)/$$file ; install -m644 $$file $(DISTDIR)/$$file; done
-	@chmod 755 $(DISTDIR)/{archiver,lmtp,setup_all}.py
+	@chmod 755 $(DISTDIR)/{archiver,setup_all}.py
 	@chmod 755 $(DISTDIR)/init.d
 	@( cd dist && tar czf ../$(DIST) archiver-$(VERSION) )
 	@echo Cleaning up dist && rm -fr dist
