@@ -27,7 +27,7 @@ cleandoc:
 distclean: clean cleandoc
 
 pycheck:
-	pychecker backend_*.py archiver.py lmtp.py
+	pychecker backend_*.py archiver.py mtplib.py || true
 
 epydoc-html:
 	@echo Creating html Documentation
