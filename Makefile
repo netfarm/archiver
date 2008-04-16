@@ -5,7 +5,7 @@ DIST=archiver-$(VERSION).tar.gz
 SUBDIRS=sql postfix
 CONTRIB=$(wildcard sql/*.sql) $(wildcard postfix/*.cf)
 BACKENDS=$(wildcard backend_*.py)
-MODULES=$(BACKENDS) archiver.py PyLogAnalyzer.py archiver_svc.py lmtp.py compress.py mblookup.py
+MODULES=$(BACKENDS) archiver.py PyLogAnalyzer.py archiver_svc.py mtplib.py compress.py mblookup.py
 
 CONFS=archiver.conf archiver-win32.ini .pycheckrc
 TOOLS=setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
