@@ -1,0 +1,33 @@
+localhost:10025          inet n  -       n       -       -  smtpd
+   -o content_filter=lmtp:unix:/var/lib/archiver/lmtp_storage
+   -o local_recipient_maps=
+   -o relay_recipient_maps=
+   -o smtpd_restriction_classes=
+   -o smtpd_client_restrictions=
+   -o smtpd_helo_restrictions=
+   -o smtpd_sender_restrictions=
+   -o smtpd_recipient_restrictions=permit_mynetworks,reject
+   -o mynetworks=127.0.0.0/8
+   -o mynetworks_style=host
+   -o smtpd_error_sleep_time=0
+   -o smtpd_soft_error_limit=1001
+   -o smtpd_hard_error_limit=1000
+   -o smtpd_banner=Archive-Gate
+   -o mail_name=Netfarm-Archiver-FirstStage
+
+localhost:10026          inet n  -       n       -       -  smtpd
+   -o content_filter=
+   -o local_recipient_maps=
+   -o relay_recipient_maps=
+   -o smtpd_restriction_classes=
+   -o smtpd_client_restrictions=
+   -o smtpd_helo_restrictions=
+   -o smtpd_sender_restrictions=
+   -o smtpd_recipient_restrictions=permit_mynetworks,reject
+   -o mynetworks=127.0.0.0/8
+   -o mynetworks_style=host
+   -o smtpd_error_sleep_time=0
+   -o smtpd_soft_error_limit=1001
+   -o smtpd_hard_error_limit=1000
+   -o smtpd_banner=Storage-Gate
+   -o mail_name=Netfarm-Archiver-SecondStage

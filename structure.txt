@@ -1,0 +1,43 @@
+Netfarm Mail Archiver - Structure for version 2.0
+
+
+                    +--------------------+                   +--------------------+
+      smtpd      -> | Archiver 1st stage | ->    smtpd    -> | Archiver 2nd stage | ->        smtpd
+(content-filter1)   +---------+----------+ (content-filter2) +---------+----------+    (email delivering)
+                              |                                        |
+                              |                                        |
+                    +---------+----------+                   +---------+----------+
+                    |      Archive       |                   |       Storage      |
+                    +---------+----------+                   +---------+----------+
+                              |                                        | 
+                              |                                        |
+                    +---------+----------+                   +---------+----------+
+                    |  Archive Backend   |                   |  Storage Backend   |
+                    +--------------------+                   +--------------------+
+
+
+
+- smtpd 1st instance -> archiver 1st stage via content-filter1 using lmtp
+.
+- archiver 1st stage -> smtpd 2nd instance via smtp/lmtp (content-filter2)
+.
+- smtpd 2nd instance -> archiver 2nd stage via transport using lmtp
+.
+- archiver 2nd stage -> email delivering using smtp/lmtp to smtpd 3rd instance
+
+
+Implemented backends:
+
+Archive Backends:
+  - xmlrpc (unix, win32)
+  - direct rdbms (unix, win32) - backends: postgresql using psycopg
+  - swish-e Berkeley DB pid-generator (unix only)
+
+Storage Backends:
+  - xmlrpc (unix, win32)
+  - direct rdbms (unix, win32) - backends: postgresql using psycopg
+  - filesystem (unix, win32)
+  - swish-e filesystem + spool for swish-e processing (unix only)
+
+
+TODO: stage to stage passthrough - maybe usefull on win32
