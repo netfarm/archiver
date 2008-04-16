@@ -61,6 +61,11 @@ TODO 2.x:
          to avoid reloading each check
 - [done] complete backend_pgsql and use new sql for mail
 - [done] customizable subject pattern whitelist
+- [done] annonce DSN support and passthrough
+- [done] sendmail code is rewritten, it returns ok and logs a warn if the nexthop refuses
+         some of recipients
+- [done] wontfix - why poll() keeps objects in list then calls handle_excpt???
+- [done] no more warnings in del_hook
 
 - Modify init script to take params from /etc/defaults also permission checks for logfile etc
 - Make debian package
@@ -69,7 +74,6 @@ TODO 2.x:
 - Unmimify email addresses?
 - Add an info about unix socket + asyncore problem
 - Update postfix templates
-- Check -> sendmail: Some of recipients rejected / mail is expunged from hashdb, correct?
 - Update structure.txt: stage to stage passthrough - maybe usefull on win32
 - Convert some fields in lowercase before archiving?
 - Fix: Error parsing to/cc: Undisclosed-Recipient
@@ -78,8 +82,8 @@ TODO 2.x:
 - check backend_xmlrpc, new version is totally untested
 - remove sql storage backend?
 - uniform backend error messages
-- why poll() keeps objects in list then calls handle_excpt???
 - remove duplicate code in backend_filesystem and backed_vfsimage
-
 - option to skip spam tagged mail
 - remove removables globals
+- new_mid() is fake, I use it only for testing direct connection
+- if no headers the X-Archiver-ID becomes body
