@@ -5,12 +5,11 @@ DIST=archiver-$(VERSION).tar.gz
 SUBDIRS=sql postfix
 CONTRIB=$(wildcard sql/*.sql) $(wildcard postfix/*.cf) 
 BACKENDS=$(wildcard backend_*.py)
-MODULES=$(BACKENDS) archiver.py archiver_svc.py lmtp.py
+MODULES=$(BACKENDS) archiver.py mtplib.py
 
-CONFS=archiver.ini archiver-win32.ini .pycheckrc
-TOOLS=Doxyfile setup_all.py __init__.py init.d NetfarmArchiver.nsi nma.ico
-DOCS=copyright.txt TODO $(wildcard ChangeLog*) structure.txt
-TESTFILES=work-lmtp/lmtp.py work-lmtp/testlmtp.py work-lmtp/checkaddr.py
+CONFS=archiver.ini .pycheckrc
+TOOLS=setup_all.py __init__.py init.d
+DOCS=copyright.txt $(wildcard ChangeLog*) structure.txt
 
 ALL=Makefile $(MODULES) $(DOCS) $(TOOLS) $(CONFS) $(CONTRIB)
 DISTDIR=dist/archiver-$(VERSION)
@@ -54,7 +53,7 @@ $(DIST): $(ALL)
 	@mkdir -p $(DISTDIR)
 	@for dir in $(SUBDIRS); do echo Creating $(DISTDIR)/$$dir ; install -m755 -d $(DISTDIR)/$$dir; done
 	@for file in $(ALL); do echo Installing $(DISTDIR)/$$file ; install -m644 $$file $(DISTDIR)/$$file; done
-	@chmod 755 $(DISTDIR)/{archiver,lmtp,setup_all}.py
+	@chmod 755 $(DISTDIR)/{archiver,setup_all}.py
 	@chmod 755 $(DISTDIR)/init.d
 	@( cd dist && tar czf ../$(DIST) archiver-$(VERSION) )
 	@echo Cleaning up dist && rm -fr dist
