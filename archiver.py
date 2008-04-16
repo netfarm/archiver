@@ -55,7 +55,8 @@ from threading import Thread, RLock
 from cStringIO import StringIO
 from getopt import getopt
 from types import IntType, DictType, StringType
-from random import randint
+from random import sample as random_sample
+from string import ascii_letters
 
 import re
 
@@ -477,12 +478,10 @@ def StageHandler(config, stage_type):
                 LOG(E_TRACE, '%s: Done' % self.getName())
             self.close_all()
 
-        ## low entropy message id generator
+        ## low entropy message id generator, fake because it's not changed in the msg
         def new_mid(self):
-            m = ''
-            for i in range(5):
-                m = m + chr(randint(0, 255))
-            return '@'.join([m, self.address])
+            m = ''.join(random_sample(ascii_letters, 20)) + '/NMA'
+            return '<' + '@'.join([m, self.address]) + '>'
             
         def sendmail(self, m_from, m_opts, m_to, m_rcptopts, msg, aid=None, mid=None):
             """Rerouting of mails to nexthop (postfix)"""
