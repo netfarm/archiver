@@ -248,8 +248,9 @@ def split_hdr(header, value, dict):
     hdr_list = hdr.split(';')
     for hdr in hdr_list:
         hdr = hdr.strip()
-        if hdr.find('=') == -1: continue
+        if hdr.find('=') == -1: continue # invalid
         key, value = hdr.split('=', 1)
+        if len(value) == 0: continue # empty
         key = key.strip()
         value = unquote(value).strip()
         dict[key] = value
