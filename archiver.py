@@ -610,6 +610,8 @@ def StageHandler(config, stage_type):
             if not data.endswith(NL):
                 data = data + NL
 
+            aid = None
+            mid = None
             stream = StringIO(data)
             msg = Message(stream)
 
