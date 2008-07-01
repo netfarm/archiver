@@ -639,7 +639,7 @@ def StageHandler(config, stage_type):
 
             ## Only one From address is allowed
             if len(m_from) > 1:
-                return self.do_exit(443, 'Only one From address is allowed')
+                return self.do_exit(550, 'Only one From address is allowed')
 
             ## Empty From field use sender
             if len(m_from) == 0:
