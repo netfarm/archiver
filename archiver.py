@@ -245,6 +245,7 @@ def split_hdr(key, ct_string, hd):
                 pname, pvalue = par.split('=', 1)
                 pname = pname.strip()
                 pvalue = pvalue.strip()
+                if len(pvalue) == 0: continue # empty
                 if pvalue[0] == '"' and pvalue[-1] == '"' and pvalue !='""':
                     pvalue = pvalue[1:-1]
                 hd[pname] = pvalue
