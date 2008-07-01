@@ -716,7 +716,7 @@ def StageHandler(config, stage_type):
                         m_to += [parseaddr(recipient)]
                     except: pass
                 if len(m_to) == 0:
-                    return self.do_exit(442, 'Mail has not suitable To/Recipient')
+                    return self.do_exit(552, 'Mail has not suitable To/Recipient')
 
             ## whitelist check: From, To and Sender (envelope)
             try:
