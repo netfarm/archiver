@@ -97,7 +97,7 @@ runas      = None
 ##
 
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
-CHECKHEADERS = [ 'from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower() ]
+CHECKHEADERS = [ 'from', 'subject', 'date', 'message-id', AID.lower() ]
 whitelist = []
 subjpattern = None
 input_classes  = { 'smtp': MTPServer }
