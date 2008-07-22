@@ -94,8 +94,7 @@ serverPoll = []
 ##
 
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
-#CHECKHEADERS = [ 'from', 'to', 'cc', 'subject', 'date', 'message-id', AID.lower() ]
-CHECKHEADERS = [ 'from', 'to', 'cc', 'subject', 'message-id', AID.lower() ]
+CHECKHEADERS = [ 'from', 'subject', 'message-id', AID.lower() ]
 whitelist = []
 input_classes  = { 'smtp': MTPServer }
 output_classes = { 'smtp': SMTP }
