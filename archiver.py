@@ -25,7 +25,6 @@ __all__ = [ 'BackendBase',
             'StorageTypeNotSupported',
             'BadConfig',
             'BACKEND_OK',
-            'mime_decode_header',
             'E_NONE',
             'E_ERR',
             'E_INFO',
@@ -48,18 +47,16 @@ from os import close, dup, getpid
 from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
-from rfc822 import parseaddr
 from smtplib import SMTP, SMTPRecipientsRefused, SMTPSenderRefused
 from ConfigParser import ConfigParser
-from mimify import mime_decode
-from base64 import decodestring
 from threading import Thread, Lock, RLock, Event
 from cStringIO import StringIO
 from getopt import getopt
 from types import IntType, DictType, StringType
 from random import sample as random_sample
 from string import ascii_letters
-from md5 import new as MD5
+from utils import mime_decode_header, unquote, split_hdr
+from utils import parse_message, dupe_check, safe_parseaddr, hash_headers
 
 import re
 
@@ -98,8 +95,6 @@ runas      = None
 ##
 
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
-CHECKHEADERS = [ 'from', 'subject', 'date', 'message-id', AID.lower() ]
-HASHHEADERS  = [ 'message-id', 'from', 'to', 'cc', 'subject' ]
 whitelist = []
 subjpattern = None
 input_classes  = { 'smtp': MTPServer }
@@ -214,102 +209,6 @@ class Logger:
         try:
             self.log_fd.close()
         except: pass
-
-### Helpers
-mime_head = re.compile('=\\?(.*?)\\?(\w)\\?([^? \t\n]+)\\?=', re.IGNORECASE)
-encodings = { 'q': mime_decode, 'b': decodestring }
-
-def mime_decode_header(line):
-    """workaound to python mime_decode_header
-
-    The original code doesn't support base64"""
-    newline = ''
-    pos = 0
-    while 1:
-        res = mime_head.search(line, pos)
-        if res is None:
-            break
-        # charset = res.group(1)
-        enctype = res.group(2).lower()
-        match = res.group(3)
-        if encodings.has_key(enctype):
-            match = ' '.join(match.split('_'))
-            newline = newline + line[pos:res.start(0)] + encodings[enctype](match)
-        else:
-            newline = newline + line[pos:res.start(0)] + match
-        pos = res.end(0)
-
-    return newline + line[pos:]
-
-def unquote(text):
-    return ''.join(text.split('"'))
-
-def split_hdr(header, value, dict):
-    """ Multiline headers splitting"""
-    hdr = '='.join([header, value]).replace('\r', '').replace('\n', '')
-    hdr_list = hdr.split(';')
-    for hdr in hdr_list:
-        hdr = hdr.strip()
-        if hdr.find('=') == -1: continue # invalid
-        key, value = hdr.split('=', 1)
-        if len(value) == 0: continue # empty
-        key = key.strip()
-        value = unquote(value).strip()
-        dict[key] = value
-
-def parse(submsg):
-    """Parse a sub message"""
-    found = None
-    if submsg.dict.has_key('content-type'):
-        ct = submsg.dict['content-type']
-        hd = {}
-        split_hdr('Content-Type', ct, hd)
-
-        if submsg.dict.has_key('content-disposition'):
-            cd = submsg.dict['content-disposition']
-            split_hdr('Content-Disposition', cd, hd)
-
-        ### Hmm nice job clients, filename or name?
-        if not hd.has_key('name') and hd.has_key('filename'):
-            hd['name'] = hd['filename']
-
-        ### Found an attachment
-        if hd.has_key('name'):
-            LOG(E_TRACE, 'Found attachment: ' + hd['name'] + ' - Enctype: ' + submsg.getencoding())
-            found = { 'name': hd['name'], 'content-type': hd['Content-Type'] }
-    return found
-
-def dupe_check(headers):
-    """Check for duplicate headers
-
-    Some headers should be unique"""
-    check = []
-    for hdr in headers:
-        hdr = hdr.strip()
-        if hdr.find(':') == -1: continue
-        key = hdr.split(':', 1)[0]
-        key = key.lower()
-        if key in check and key in CHECKHEADERS:
-            return key
-        check.append(key)
-    return None
-
-def safe_parseaddr(address):
-    address = parseaddr(address)[1]
-    if address is None or (address.find('@') == -1):
-        return None
-    l, d = address.split('@', 1)
-    l = l.strip()
-    d = d.strip()
-    if (len(l) == 0) or (len(d) == 0):
-        return None
-    return address
-
-def hash_headers(getter):
-    m = MD5()
-    for header in HASHHEADERS:
-        m.update(getter(header, ''))
-    return m.hexdigest()
 
 def StageHandler(config, stage_type):
     """Meta class for a StageHandler Backend"""
@@ -745,7 +644,7 @@ def StageHandler(config, stage_type):
 
             m_attach = []
             if msg.maintype != 'multipart':
-                m_parse = parse(msg)
+                m_parse = parse_message(msg)
                 if m_parse is not None:
                     m_attach.append(m_parse)
             else:
@@ -754,7 +653,7 @@ def StageHandler(config, stage_type):
                 try:
                     while filepart.next():
                         submsg = Message(filepart)
-                        subpart = parse(submsg)
+                        subpart = parse_message(submsg)
                         if subpart is not None:
                             m_attach.append(subpart)
                 except:
