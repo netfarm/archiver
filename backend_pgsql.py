@@ -301,7 +301,6 @@ class Backend(BackendBase):
 
         qs = qs + 'SELECT year, pid from mail_pid;'
 
-        print qs
         res, data, msg = self.do_query(qs, True, True)
         if not res or len(data) != 2:
             return 0, 443, msg
