@@ -948,7 +948,7 @@ def unix_startup(config, user=None, debug=False):
         pid = int(open(pidfile).read().strip())
         LOG(E_TRACE, '[Main] Lock: Sending signal to the process')
         try:
-            kill(pid,0)
+            kill(pid, 0)
             LOG(E_ERR, '[Main] Stale Lockfile: Process is alive')
         except:
             LOG(E_ERR, '[Main] Stale Lockfile: Old process is not alive')
