@@ -59,6 +59,7 @@ from getopt import getopt
 from types import IntType, DictType, StringType
 from random import sample as random_sample
 from string import ascii_letters
+from md5 import new as MD5
 
 import re
 
@@ -98,6 +99,7 @@ runas      = None
 
 re_aid = re.compile(r'^(X-Archiver-ID: .*?)[\r|\n]', re.IGNORECASE | re.MULTILINE)
 CHECKHEADERS = [ 'from', 'subject', 'date', 'message-id', AID.lower() ]
+HASHHEADERS  = [ 'message-id', 'from', 'to', 'cc', 'subject' ]
 whitelist = []
 subjpattern = None
 input_classes  = { 'smtp': MTPServer }
@@ -303,6 +305,12 @@ def safe_parseaddr(address):
         return None
     return address
 
+def hash_headers(getter):
+    m = MD5()
+    for header in HASHHEADERS:
+        m.update(getter(header, ''))
+    return m.hexdigest()
+
 def StageHandler(config, stage_type):
     """Meta class for a StageHandler Backend"""
 ##### Class Wrapper - Start
@@ -446,7 +454,7 @@ def StageHandler(config, stage_type):
             m = ''.join(random_sample(ascii_letters, 20)) + '/NMA'
             return '<' + '@'.join([m, self.address]) + '>'
 
-        def sendmail(self, m_from, m_opts, m_to, m_rcptopts, msg, aid=None, mid=None):
+        def sendmail(self, m_from, m_opts, m_to, m_rcptopts, msg, aid=None, hash=None):
             """Rerouting of mails to nexthop (postfix)"""
             if msg is None: # E.g. regex has failed
                 LOG(E_ERR, '%s-sendmail: msg is None something went wrong ;(' % self.type)
@@ -489,10 +497,10 @@ def StageHandler(config, stage_type):
                     if server_reply != {}:
                         LOG(E_ERR, '%s-sendmail: ok but not all recipients where accepted %s' % (self.type, server_reply))
 
-                    if mid is not None and self.hashdb.has_key(mid):
+                    if hash is not None and self.hashdb.has_key(hash):
                         LOG(E_TRACE, '%s-sendmail: expunging msg %s from hashdb' % (self.type, aid))
                         try:
-                            del self.hashdb[mid]
+                            del self.hashdb[hash]
                             self.hashdb.sync()
                         except:
                             pass
@@ -528,10 +536,11 @@ def StageHandler(config, stage_type):
             ## Check if I have msgid in my cache
             mid = msg.get('message-id', self.new_mid())
             LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
-            if self.hashdb.has_key(mid):
-                aid = self.hashdb[mid]
+            hash = hash_headers(msg.get)
+            if self.hashdb.has_key(hash):
+                aid = self.hashdb[hash]
                 LOG(E_ERR, '%s: Message already processed' % self.type)
-                return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, mid)
+                return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, hash)
 
             ## Date extraction
             m_date = None
@@ -559,16 +568,16 @@ def StageHandler(config, stage_type):
                     LOG(E_ERR, '%s: Invalid X-Archiver-ID header [%s]' % (self.type, str(val)))
                     return self.do_exit(550, 'Invalid X-Archiver-ID header')
 
-                stuff = { 'mail': data, 'year': year, 'pid': pid, 'date': m_date, 'mid': mid }
+                args = dict(mail=data, year=year, pid=pid, date=m_date, mid=mid, hash=hash)
                 LOG(E_TRACE, '%s: year is %d - pid is %d (%s)' % (self.type, year, pid, mid))
-                status, code, msg = self.backend.process(stuff)
+                status, code, msg = self.backend.process(args)
                 if status == 0:
                     LOG(E_ERR, '%s: process failed %s' % (self.type, msg))
                     return self.do_exit(code, msg)
 
                 ## Inserting in hashdb
                 LOG(E_TRACE, '%s: inserting %s msg in hashdb' % (self.type, aid))
-                self.hashdb[mid] = aid
+                self.hashdb[hash] = aid
                 self.hashdb.sync()
                 LOG(E_TRACE, '%s: backend worked fine' % self.type)
             else:
@@ -576,7 +585,7 @@ def StageHandler(config, stage_type):
                 LOG(E_TRACE, '%s: X-Archiver-ID header not found in mail [whitelist]' % self.type)
             ## Next hop
             LOG(E_TRACE, '%s: passing data to nexthop: %s:%s' % (self.type, self.output_address, self.output_port))
-            return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, mid)
+            return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, hash)
 
         def add_aid(self, data, msg, aid):
             archiverid = '%s: %s' % (AID, aid)
@@ -630,16 +639,18 @@ def StageHandler(config, stage_type):
 
             if sender == '':
                 LOG(E_INFO, '%s: Null return path mail, not archived' % (self.type))
-                return self.sendmail('<>', mail_options, recips, rcptopts, data, aid, mid)
+                return self.sendmail('<>', mail_options, recips, rcptopts, data, aid)
 
             ## Check if I have msgid in my cache
             mid = msg.get('message-id', self.new_mid())
-            if self.hashdb.has_key(mid):
+            hash = hash_headers(msg.get)
+            if self.hashdb.has_key(hash):
                 LOG(E_TRACE, '%s: Message-id: %s' % (self.type, mid))
-                aid = self.hashdb[mid]
+                aid = self.hashdb[hash]
                 LOG(E_TRACE, '%s: Message already has year/pid pair, only adding header' % self.type)
-                return self.sendmail(sender, mail_options, recips, rcptopts, self.add_aid(data, msg, aid), aid, mid)
+                return self.sendmail(sender, mail_options, recips, rcptopts, self.add_aid(data, msg, aid), aid, hash)
             args['m_mid'] = mid
+            args['hash'] = hash
 
             ## Check for duplicate headers
             dupe = dupe_check(msg.headers)
@@ -767,14 +778,14 @@ def StageHandler(config, stage_type):
             ## Adding X-Archiver-ID: header
             aid = '%d-%d' % (year, pid)
             data = self.add_aid(data, msg, aid)
-            if mid is not None:
-                LOG(E_TRACE, '%s: inserting %s msg in hashdb' % (self.type, aid))
-                self.hashdb[mid] = aid
-                self.hashdb.sync()
+            LOG(E_TRACE, '%s: inserting %s msg in hashdb' % (self.type, aid))
+            self.hashdb[hash] = aid
+            self.hashdb.sync()
+
             ## Next hop
             LOG(E_TRACE, '%s: backend worked fine' % self.type)
             LOG(E_TRACE, '%s: passing data to nexthop: %s:%s' % (self.type, self.output_address, self.output_port))
-            return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, mid)
+            return self.sendmail(sender, mail_options, recips, rcptopts, data, aid, hash)
 ##### Class Wrapper - End
     return apply(StageHandler, (input_classes[input_class], config, stage_type))
 
