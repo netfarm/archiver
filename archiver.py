@@ -292,6 +292,17 @@ def dupe_check(headers):
         check.append(key)
     return None
 
+def safe_parseaddr(address):
+    address = parseaddr(address)[1]
+    if address is None or (address.find('@') == -1):
+        return None
+    l, d = address.split('@', 1)
+    l = l.strip()
+    d = d.strip()
+    if (len(l) == 0) or (len(d) == 0):
+        return None
+    return address
+
 def StageHandler(config, stage_type):
     """Meta class for a StageHandler Backend"""
 ##### Class Wrapper - Start
@@ -434,7 +445,7 @@ def StageHandler(config, stage_type):
         def new_mid(self):
             m = ''.join(random_sample(ascii_letters, 20)) + '/NMA'
             return '<' + '@'.join([m, self.address]) + '>'
-            
+
         def sendmail(self, m_from, m_opts, m_to, m_rcptopts, msg, aid=None, mid=None):
             """Rerouting of mails to nexthop (postfix)"""
             if msg is None: # E.g. regex has failed
@@ -600,7 +611,7 @@ def StageHandler(config, stage_type):
             return data
 
         def process_archive(self, peer, sender, mail_options, recips, rcptopts, data):
-                
+
             """Archives email meta data using a Backend"""
             LOG(E_INFO, '%s: Sender is <%s> - Recipients (Envelope): %s' % (self.type, sender, ','.join(recips)))
 
@@ -611,6 +622,7 @@ def StageHandler(config, stage_type):
             if not data.endswith(NL):
                 data = data + NL
 
+            args = {}
             aid = None
             mid = None
             stream = StringIO(data)
@@ -627,84 +639,87 @@ def StageHandler(config, stage_type):
                 aid = self.hashdb[mid]
                 LOG(E_TRACE, '%s: Message already has year/pid pair, only adding header' % self.type)
                 return self.sendmail(sender, mail_options, recips, rcptopts, self.add_aid(data, msg, aid), aid, mid)
+            args['m_mid'] = mid
 
-            ## Check for duplicate header
+            ## Check for duplicate headers
             dupe = dupe_check(msg.headers)
             if dupe is not None:
                 LOG(E_ERR, '%s: Duplicate header %s' % (self.type, dupe))
                 return self.do_exit(552, 'Duplicate header %s' % dupe)
 
             ## Extraction of From field
-            try:
-                m_from = msg.getaddrlist('From')
-            except:
-                return self.do_exit(443, 'Error parsing addrlist From: %s' % msg.get('From', None))
-
-            ## Only one From address is allowed
-            if len(m_from) > 1:
-                return self.do_exit(550, 'Only one From address is allowed')
-
-            ## Empty From field use sender
-            if len(m_from) == 0:
-                LOG(E_ERR, '%s: no From header in mail using sender' % self.type)
-                try:
-                    m_from = parseaddr(sender)
-                except:
-                    return self.do_exit(552, 'Mail has not suitable From/Sender')
+            m_from = msg.getaddrlist('From')
+            if len(m_from) == 1:
+                m_from = safe_parseaddr(m_from[0][1])
             else:
-                ## it's better to have m_from as single tuple
-                m_from = m_from[0]
+                m_from = None
 
-            ## Extraction of To field
-            try:
-                m_to = msg.getaddrlist('To')
-            except:
-                return self.do_exit(443, 'Error parsing addrlist To: %s' % msg.get('To', None))
+            ## Empty or invalid 'From' field, try to use sender
+            if m_from is None:
+                LOG(E_ERR, '%s: no From header in mail using sender' % self.type)
+                m_from = safe_parseaddr(sender)
 
-            ## Empty To field use recipients
+            ## No luck
+            if m_from is None:
+                return self.do_exit(552, 'Mail has not suitable From/Sender')
+
+            args['m_from'] = m_from
+
+            ## Extract 'To' field
+            m_to = []
+            for h in msg.getaddrlist('To'):
+                rec = safe_parseaddr(h[1])
+                if rec is None: continue
+                m_to.append(rec)
+
+            ## Empty 'To' field use recipients
             if len(m_to) == 0:
                 LOG(E_ERR, '%s: no To header in mail using recipients' % self.type)
                 for recipient in recips:
-                    try:
-                        m_to += [parseaddr(recipient)]
-                    except: pass
+                    rec = safe_parseaddr(recipient)
+                    if rec is None:
+                        continue
+                    m_to.append(rec)
                 if len(m_to) == 0:
                     return self.do_exit(552, 'Mail has not suitable To/Recipient')
 
-            ## Extraction of Subject field
-            m_sub = mime_decode_header(msg.get('Subject', ''))
+            ## Extract 'Cc' field
+            for h in msg.getaddrlist('Cc'):
+                rec = safe_parseaddr(h[1])
+                if rec is None: continue
+                m_to.append(rec)
+
+            ## Cleanup: remove duplicates
+            recs = []
+            for rec in m_to:
+                if rec not in recs:
+                    recs.append(rec)
+            args['m_rec'] = recs
+
+            ## Extract 'Subject' field
+            m_sub = mime_decode_header(msg.get('Subject', 'No Subject'))
             if subjpattern is not None and m_sub.find(subjpattern) != -1:
                 LOG(E_INFO, '%s: Subject pattern matched, not archived' % self.type)
                 return self.sendmail(sender, mail_options, recips, rcptopts, self.remove_aid(data, msg))
+            args['m_sub'] = m_sub
 
-            ## whitelist check: From, To and Sender (envelope)
-            try:
-                check_sender = [parseaddr(sender)]
-            except:
-                LOG(E_ERR, '%s: cannot parse %s' % (self.type, sender))
-                check_sender = []
+            ## Whitelist check: From, To and Sender (envelope)
+            checklist = [m_from] + m_to
+            ss = safe_parseaddr(sender)
+            if ss is not None:
+                checklist.append(ss)
 
-            for addr in [m_from] + m_to + check_sender:
-                try:
-                    base = addr[1].split('@')[0]
-                except:
-                    base = addr
-                LOG(E_TRACE, 'whitelist check: %s' % base)
-                if base in whitelist:
-                    LOG(E_INFO, '%s: Mail to: %s in whitelist, not archived' % (self.type, base))
+            for check in checklist:
+                if check.split('@', 1)[0] in whitelist:
+                    LOG(E_INFO, '%s: Mail to: %s in whitelist, not archived' % (self.type, check))
                     return self.sendmail(sender, mail_options, recips, rcptopts, self.remove_aid(data, msg))
 
             ## Sender size limit check - in kb
-            if dbchecker is not None and dbchecker.quota_check(m_from[1], size >> 10):
+            if dbchecker is not None and dbchecker.quota_check(m_from, size >> 10):
                 return self.do_exit(422, 'Sender quota execeded')
+            args['m_size'] = size
 
-            ## Extraction of Cc field
-            try:
-                m_cc = msg.getaddrlist('Cc')
-            except:
-                return self.do_exit(443, 'Error parsing addrlist Cc: %s' % msg.get('Cc', None))
-
-            ## Date extraction
+            ## Extract 'Date' field
             m_date = None
             if self.datefromemail:
                 m_date = msg.getdate('Date')
@@ -715,10 +730,9 @@ def StageHandler(config, stage_type):
 
             if m_date is None:
                 m_date = localtime(time())
+            args['m_date'] = m_date
 
             m_attach = []
-
-            ## If multipart sould be attachment (but not always)
             if msg.maintype != 'multipart':
                 m_parse = parse(msg)
                 if m_parse is not None:
@@ -734,27 +748,18 @@ def StageHandler(config, stage_type):
                             m_attach.append(subpart)
                 except:
                     LOG(E_ERR, '%s: Error in multipart splitting' % self.type)
-
-            bargs = {}
-            bargs['m_from'] = m_from
-            bargs['m_to'] = m_to
-            bargs['m_cc'] = m_cc
-            bargs['m_sub'] = m_sub
-            bargs['m_date'] = m_date
-            bargs['m_attach'] = m_attach
-            bargs['m_mid'] = mid
-            bargs['m_size'] = size
+            args['m_attach'] = m_attach
 
             if dbchecker is not None:
-                ## Compose address list for mb lookup
+                ## Collect data for mb lookup
                 addrs = []
-                for addr in [m_from] + m_to + m_cc:
-                    addrs.append(addr[1])
-                bargs['m_mboxes'] = dbchecker.mblookup(addrs)
+                for addr in [m_from] + m_to:
+                    addrs.append(addr)
+                args['m_mboxes'] = dbchecker.mblookup(addrs)
             else:
-                bargs['m_mboxes'] = []
+                args['m_mboxes'] = []
 
-            year, pid, error = self.backend.process(bargs)
+            year, pid, error = self.backend.process(args)
             if year == 0:
                 LOG(E_ERR, '%s: Backend Error: %s' % (self.type, error))
                 return self.do_exit(pid, error)

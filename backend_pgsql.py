@@ -264,10 +264,6 @@ class Backend(BackendBase):
         @param data: is a dict containing all needed stuff
         @return: the result of do_query"""
 
-        ## Safety check
-        if (len(data['m_from']) == 0) or ((len(data['m_to']) + len(data['m_cc'])) == 0):
-            return 0, 443, 'Integrity error missing From/To/Cc'
-
         # Conversions
         quote_dict(data)
         nattach = len(data['m_attach'])
@@ -276,12 +272,9 @@ class Backend(BackendBase):
         mail_date = asctime(data['m_date'])
         mid = data['m_mid'][:512]
 
-        try:
-            slog, sdom = data['m_from'][1].split('@')
-            slog = sql_quote(slog.strip()[:512])
-            sdom = sql_quote(sdom.strip()[:512])
-        except:
-            return 0, 443, 'Error splitting From address'
+        slog, sdom = data['m_from'].split('@', 1)
+        slog = sql_quote(slog.strip()[:512])
+        sdom = sql_quote(sdom.strip()[:512])
 
         values = { 'message_id' : mid,
                    'from_login' : slog,
@@ -291,8 +284,12 @@ class Backend(BackendBase):
                    'mail_size'  : mail_size,
                    'attachment' : nattach }
 
-        addrs = data['m_to'] + data['m_cc']
-        recipients = self.parse_recipients(addrs)
+        recipients = []
+        for rec in data['m_rec']:
+            rlog, rdom = rec.split('@', 1)
+            rlog = sql_quote(rlog.strip()[:512])
+            rdom = sql_quote(rdom.strip()[:512])
+            recipients.append(dict(to_login=rlog, to_domain=rdom))
 
         qs = mail_template % values
 
@@ -304,6 +301,7 @@ class Backend(BackendBase):
 
         qs = qs + 'SELECT year, pid from mail_pid;'
 
+        print qs
         res, data, msg = self.do_query(qs, True, True)
         if not res or len(data) != 2:
             return 0, 443, msg
