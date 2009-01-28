@@ -700,7 +700,7 @@ def StageHandler(config, stage_type):
             if len(m_from) == 0:
                 LOG(E_ERR, '%s: no From header in mail using sender' % self.type)
                 try:
-                    m_from = parseaddr(sender)
+                    m_from = [parseaddr(sender)]
                 except:
                     return self.do_exit(552, 'Mail has not suitable From/Sender') 
 
