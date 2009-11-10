@@ -49,7 +49,7 @@ E_TRACE  = 4
 
 global logfd
 
-loglevel = E_ERR
+loglevel = E_TRACE
 ### Queries
 
 q_postfix_msgid = """
@@ -324,8 +324,8 @@ class PyLogAnalyzer:
         """ Picks mail_id from the record of postfix/cleanup and fills mail_log_out entry """
         if not info.has_key('to'): return True # no need
 
-        ## Skip 'connect to' - FIXME find a better way postfix in etch 11, sarge 9
-        if (len(info['ref']) != 11) and (len(info['ref']) != 9): return True
+        ## Skip 'connect to' - FIXME find a better way postfix in etch 11, sarge 9, lenny 10 ??
+        if len(info['ref']) not in (9, 10, 11): return True
 
         ## Retrieve ref's mail_id
         mail_id = self.query(q_mail_id, info, fetch=True)
