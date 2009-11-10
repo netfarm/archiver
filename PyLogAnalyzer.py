@@ -32,7 +32,7 @@ from mx.DateTime.Parser import DateTimeFromString
 from psycopg2 import connect
 import re
 
-DBDSN = 'host=localhost dbname=mail user=archiver password=mail'
+DBDSN = 'host=localhost dbname=mail user=archiver password=archiver'
 
 re_line = re.compile(r'(\w+\s+\d+\s+\d+:\d+:\d+) (.*?) (.*?)\[(\d*?)\]: (.*)')
 re_msg  = re.compile(r'(\w+=.*?), ')
