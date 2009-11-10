@@ -743,8 +743,8 @@ class DBChecker(Thread):
                 db['timestamp'] = info[ST_MTIME]
                 db['db'] = dbdict
                 LOG(E_INFO, '[DBChecker] (Re)Loaded db %s' % db['filename'])
-            except:
-                LOG(E_ERR, '[DBChecker] Error (Re)Loading db %s' % db['filename'])
+            except Exception, e:
+                LOG(E_ERR, '[DBChecker] Error (Re)Loading db %s, %s' % (db['filename'], e))
 
     def updatedblist(self):
         ## Check timestamp and update data structs
