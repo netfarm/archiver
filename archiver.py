@@ -44,7 +44,6 @@ from sys import argv, exc_info, stdin, stdout, stderr
 from sys import exit as sys_exit
 from os import unlink, chmod, access, F_OK, R_OK
 from os import close, dup, getpid
-from anydbm import open as opendb
 from mimetools import Message
 from multifile import MultiFile
 from smtplib import SMTP, SMTPRecipientsRefused, SMTPSenderRefused
@@ -57,6 +56,11 @@ from random import sample as random_sample
 from string import ascii_letters
 from utils import mime_decode_header, unquote, split_hdr
 from utils import parse_message, dupe_check, safe_parseaddr, hash_headers
+
+try:
+	from bsddb3 import hashopen
+except:
+	from bsddb import hashopen
 
 import re
 
@@ -278,7 +282,7 @@ def StageHandler(config, stage_type):
 
             ## Init Hashdb to avoid re-archiving
             try:
-                self.hashdb = opendb(config.get(self.type, 'hashdb'), 'c')
+                self.hashdb = hashopen(config.get(self.type, 'hashdb'), 'c')
             except:
                 LOG(E_TRACE, '%s: Cannot open hashdb file' % self.type)
                 raise Exception, 'Cannot open hashdb file'
@@ -737,7 +741,7 @@ class DBChecker(Thread):
         if update:
             try:
                 dbdict = {}
-                dbf = opendb(db['filename'], 'r')
+                dbf = hashopen(db['filename'], 'r')
                 dbdict.update(dbf)
                 dbf.close()
                 db['timestamp'] = info[ST_MTIME]
