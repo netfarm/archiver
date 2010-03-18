@@ -40,7 +40,7 @@ def mime_decode_header(line):
         res = mime_head.search(line, pos)
         if res is None:
             break
-        # charset = res.group(1)
+        charset = res.group(1)
         enctype = res.group(2).lower()
         match = res.group(3)
         if encodings.has_key(enctype):
@@ -50,7 +50,8 @@ def mime_decode_header(line):
             newline = newline + line[pos:res.start(0)] + match
         pos = res.end(0)
 
-    return newline + line[pos:]
+    decoded = newline + line[pos:]
+    return decoded.decode(charset, 'replace')
 
 def unquote(text):
     return ''.join(text.split('"'))

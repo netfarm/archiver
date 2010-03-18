@@ -268,7 +268,7 @@ class Backend(BackendBase):
         quote_dict(data)
         nattach = len(data['m_attach'])
         mail_size = data['m_size']
-        subject = data['m_sub'][:512]
+        subject = data['m_sub'][:512].encode('utf-8', 'replace')
         mail_date = asctime(data['m_date'])
         mid = data['m_mid'][:512]
 
