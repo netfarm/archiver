@@ -165,7 +165,7 @@ class Backend(BackendPGSQL):
         return False
 
     def getImageFile(self):
-        res, data, msg = self.do_query('select get_curr_media();', True, True)
+        res, data, msg = self.do_query('select get_curr_media();', fetch=True, autorecon=True)
         self.LOG(E_ERR, data)
         if not res or len(data) != 1:
             self.LOG(E_ERR, self._prefix + 'GetImageFile failed ' + msg)
@@ -190,7 +190,7 @@ class Backend(BackendPGSQL):
         return self.do_cmd(cmd_umount % { 'mountpoint' : self.mountpoint }, 'Cannot umount image')
 
     def create(self):
-        res, data, msg = self.do_query('select get_next_media();', True, True)
+        res, data, msg = self.do_query('select get_next_media();', fetch=True, autorecon=True)
         if not res or (len(data) != 1) or data[0] == 0:
             self.LOG(E_ERR, self._prefix + 'Query returned unexpected data [%s]' % msg)
             return False
@@ -317,7 +317,7 @@ class Backend(BackendPGSQL):
 
         self.LOG(E_TRACE, self._prefix + 'wrote %s' % filename)
 
-        res, data, msg = self.do_query(update_query % data, False, True)
+        res, data, msg = self.do_query(update_query % data, fetch=False, autorecon=True)
         if not res:
             try: unlink(filename)
             except: pass
