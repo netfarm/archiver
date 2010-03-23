@@ -34,7 +34,9 @@ def mime_decode_header(line):
     """workaround to python mime_decode_header
 
     The original code doesn't support base64"""
+    ## TODO: check combined charsets headers
     newline = ''
+    charset = 'latin-1'
     pos = 0
     while 1:
         res = mime_head.search(line, pos)
